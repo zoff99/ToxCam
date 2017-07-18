@@ -75,6 +75,11 @@ dependencies:
     - cd libsodium/ ; sudo bash -c "printf 'y\naa\n\n' | checkinstall --install --pkgname libsodium --pkgversion 1.0.0 --nodoc --deldesc=no --pkglicense='GPL2'"
     - cd libsodium/ ; sudo ldconfig
     - cd libsodium ; sudo ldconfig -v 2>/dev/null | grep sodium
+    ## --- now again to save the artefact ---
+    - cd libsodium ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; rm -Rf "INSTALL_DEST"
+    - cd libsodium ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; mkdir -p  "$INSTALL_DEST"/usr ; ./configure --prefix="$INSTALL_DEST"/usr
+    - cd libsodium ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; make install ; ls -alR "$INSTALL_DEST"/usr
+    ## --- now again to save the artefact ---
     ### ------- compile and install libsodium -------
 
     ### ------------ compile and install c-toxcore ------------
@@ -82,6 +87,11 @@ dependencies:
     - cd c-toxcore ; make
     - cd c-toxcore ; sudo make install
     - cd c-toxcore ; sudo ldconfig -v 2>/dev/null | grep toxcore
+    ## --- now again to save the artefact ---
+    - cd c-toxcore ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; rm -Rf "INSTALL_DEST"
+    - cd c-toxcore ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; mkdir -p  "$INSTALL_DEST"/usr ; ./configure --enable-logging --disable-soname-versions --prefix="$INSTALL_DEST"/usr
+    - cd c-toxcore ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; make install ; ls -alR "$INSTALL_DEST"/usr
+    ## --- now again to save the artefact ---
     ### ------------ run tests
     # - cd c-toxcore ; make test ARGS="-V" ; ex1=$? ; if [ $ex1 -ne 0 ]; then sleep 60; make test ARGS="-V" ; exit $? ; fi
     ### ------------ compile and install c-toxcore ------------
