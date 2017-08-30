@@ -1,7 +1,7 @@
 # ToxCam
 
 You can take a PC or RaspberryPi with a camera on it and watch the
-camera stream from anywhere without central server
+camera stream from anywhere without a central server
 
 Build Status
 =
