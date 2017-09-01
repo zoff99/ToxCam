@@ -41,3 +41,28 @@ cat /home/pi/ToxCam/toxcam/toxcam.log|grep MyToxID|cut -d: -f3
 
 note down the ToxID of your ToxCam and add it as friend from another ToxClient.
 
+
+install on PI with Tor
+=
+
+```
+# as user pi:
+git clone https://github.com/zoff99/ToxCam
+cd ToxCam/toxcam
+chmod u+rwx loop_services.sh update_from_ci.sh scripts/*.sh
+./update_from_ci.sh
+```
+```
+sudo apt-get install luvcview
+sudo apt-get install tor tor-arm
+sudo sed -i -e "s#exit 0#su - pi bash -c '/home/pi/ToxCam/toxcam/loop_tor_services.sh' > /dev/null 2>/dev/null \&\nexit 0#" /etc/rc.local
+```
+
+then reboot
+now ToxCam should be active already. get the ToxID
+
+```
+cat /home/pi/ToxCam/toxcam/toxcam.log|grep MyToxID|cut -d: -f3
+```
+
+note down the ToxID of your ToxCam and add it as friend from another ToxClient.
