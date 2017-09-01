@@ -24,7 +24,7 @@ install on PI
 # as user pi:
 git clone https://github.com/zoff99/ToxCam
 cd ToxCam/toxcam
-chmod u+rwx loop_services.sh update_from_ci.sh scripts/*.sh
+chmod u+rwx loop_services.sh loop_tor_services.sh update_from_ci.sh scripts/*.sh
 ./update_from_ci.sh
 ```
 ```
@@ -49,7 +49,7 @@ install on PI with Tor
 # as user pi:
 git clone https://github.com/zoff99/ToxCam
 cd ToxCam/toxcam
-chmod u+rwx loop_services.sh update_from_ci.sh scripts/*.sh
+chmod u+rwx loop_services.sh loop_tor_services.sh update_from_ci.sh scripts/*.sh
 ./update_from_ci.sh
 ```
 ```

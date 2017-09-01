@@ -108,6 +108,7 @@ uint32_t DEFAULT_GLOBAL_VID_BITRATE = 5000; // kbit/sec
 #define DEFAULT_GLOBAL_MIN_VID_BITRATE 1000 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
 #define DEFAULT_FPS_SLEEP_MS 250 // 250=4fps, 500=2fps, 160=6fps  // default video fps (sleep in msecs.)
+#define PROXY_PORT_TOR_DEFAULT 9050
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 #define c_sleep(x) usleep(1000*x)
@@ -278,6 +279,7 @@ int global_send_first_frame = 0;
 int switch_nodelist_2 = 0;
 int video_high = 0;
 int switch_tcponly = 0;
+int use_tor = 0;
 
 
 uint32_t global_audio_bit_rate;
@@ -549,6 +551,24 @@ Tox *create_tox()
 	options.local_discovery_enabled = true;
 	options.hole_punching_enabled = true;
 	options.tcp_port = tcp_port;
+
+	if (use_tor == 1)
+	{
+		dbg(0, "setting Tor Relay mode\n");
+		options.udp_enabled = false; // TCP mode
+		dbg(0, "setting TCP mode\n");
+		const char *proxy_host = "127.0.0.1";
+		dbg(0, "setting proxy_host %s\n", proxy_host);
+		uint16_t proxy_port = PROXY_PORT_TOR_DEFAULT;
+		dbg(0, "setting proxy_port %d\n", (int)proxy_port);
+		options.proxy_type = TOX_PROXY_TYPE_SOCKS5;
+		options.proxy_host = proxy_host;
+		options.proxy_port = proxy_port;
+	}
+	else
+	{
+		options.proxy_type = TOX_PROXY_TYPE_NONE;
+	}
 
 	// ------------------------------------------------------------
 	// set our own handler for c-toxcore logging messages!!
@@ -3819,7 +3839,7 @@ int main(int argc, char *argv[])
 	int index;
 	int opt;
 
-   const char     *short_opt = "hvd:t23b:f";
+   const char     *short_opt = "hvd:tT23b:f";
    struct option   long_opt[] =
    {
       {"help",          no_argument,       NULL, 'h'},
@@ -3846,6 +3866,9 @@ int main(int argc, char *argv[])
         break;
       case 't':
         switch_tcponly = 1;
+        break;
+      case 'T':
+        use_tor = 1;
         break;
       case 'f':
         video_high = 1;
@@ -3876,6 +3899,7 @@ int main(int argc, char *argv[])
          printf("  -b bitrate                           video bitrate in kbit/s\n");
          printf("  -f                                   use 720p video mode\n");
          printf("  -t,                                  tcp only mode\n");
+         printf("  -T,                                  use TOR as Relay\n");
          printf("  -2,                                  use alternate bootnode list\n");
          printf("  -3,                                  use only nodes.tox.chat as bootnode\n");
          printf("  -v, --version                        show version\n");
