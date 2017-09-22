@@ -741,12 +741,44 @@ size_t get_file_name(char *namebuf, size_t bufsize, const char *pathname)
     return strlen(namebuf);
 }
 
+void shuffle(int *array, size_t n)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    int usec = tv.tv_usec;
+    srand48(usec);
+
+    if (n > 1)
+	{
+        size_t i;
+        for (i = n - 1; i > 0; i--)
+		{
+            size_t j = (unsigned int) (drand48()*(i+1));
+            int t = array[j];
+            array[j] = array[i];
+            array[i] = t;
+        }
+    }
+}
+
+
 void bootstap_nodes(Tox *tox, DHT_node nodes[], int number_of_nodes, int add_as_tcp_relay)
 {
 
 	bool res = 0;
-    for (size_t i = 0; (int)i < (int)number_of_nodes; i ++)
+	size_t i = 0;
+	int random_order_nodenums[number_of_nodes];
+    for (size_t j = 0; (int)j < (int)number_of_nodes; j++)
 	{
+		random_order_nodenums[j] = (int)j;
+	}
+
+	shuffle(random_order_nodenums, number_of_nodes);
+
+    for (size_t j = 0; (int)j < (int)number_of_nodes; j++)
+	{
+		i = (size_t)number_of_nodes[j];
+
         res = sodium_hex2bin(nodes[i].key_bin, sizeof(nodes[i].key_bin),
                        nodes[i].key_hex, sizeof(nodes[i].key_hex)-1, NULL, NULL, NULL);
 		// dbg(9, "sodium_hex2bin:res=%d\n", res);
