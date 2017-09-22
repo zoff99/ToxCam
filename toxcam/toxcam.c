@@ -777,7 +777,7 @@ void bootstap_nodes(Tox *tox, DHT_node nodes[], int number_of_nodes, int add_as_
 
     for (size_t j = 0; (int)j < (int)number_of_nodes; j++)
 	{
-		i = (size_t)number_of_nodes[j];
+		i = (size_t)random_order_nodenums[j];
 
         res = sodium_hex2bin(nodes[i].key_bin, sizeof(nodes[i].key_bin),
                        nodes[i].key_hex, sizeof(nodes[i].key_hex)-1, NULL, NULL, NULL);
