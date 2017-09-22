@@ -73,8 +73,8 @@ static struct v4lconvert_data *v4lconvert_data;
 // ----------- version -----------
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 99
-#define VERSION_PATCH 10
-static const char global_version_string[] = "0.99.10";
+#define VERSION_PATCH 11
+static const char global_version_string[] = "0.99.11";
 // ----------- version -----------
 // ----------- version -----------
 
@@ -109,6 +109,7 @@ uint32_t DEFAULT_GLOBAL_VID_BITRATE = 5000; // kbit/sec
 #define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
 #define DEFAULT_FPS_SLEEP_MS 250 // 250=4fps, 500=2fps, 160=6fps  // default video fps (sleep in msecs.)
 #define PROXY_PORT_TOR_DEFAULT 9050
+#define RECONNECT_AFTER_OFFLINE_SECONDS 90 // 90s offline and we try to reconnect
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 #define c_sleep(x) usleep(1000*x)
@@ -280,6 +281,8 @@ int switch_nodelist_2 = 0;
 int video_high = 0;
 int switch_tcponly = 0;
 int use_tor = 0;
+time_t my_last_offline_timestamp = -1;
+time_t my_last_online_timestamp = -1;
 
 
 uint32_t global_audio_bit_rate;
@@ -900,6 +903,60 @@ void bootstrap(Tox *tox)
 	{
 		dbg(9, "nodeslist:2\n");
 		bootstap_nodes(tox, &nodes2, (int)(sizeof(nodes2)/sizeof(DHT_node)), 1);
+	}
+}
+
+
+void reconnect(Tox *tox)
+{
+	bootstrap(tox);
+
+	// -------- try to go online --------
+	long long unsigned int cur_time = time(NULL);
+	uint8_t off = 1;
+	long long loop_counter = 0;
+	long long overall_loop_counter = 0;
+	while (1)
+	{
+        tox_iterate(tox, NULL);
+        usleep(tox_iteration_interval(tox) * 1000);
+        if (tox_self_get_connection_status(tox) && off)
+		{
+            dbg(2, "Reconnect: Tox online, took %llu seconds\n", time(NULL) - cur_time);
+            off = 0;
+			break;
+        }
+        c_sleep(20);
+		loop_counter++;
+		overall_loop_counter++;
+
+		if (overall_loop_counter > (100 * 20)) // 40 secs
+		{
+			dbg(2, "Reconnect: Giving up after %llu seconds\n", time(NULL) - cur_time);
+			break;
+		}
+
+		if (loop_counter > (50 * 20))
+		{
+			loop_counter = 0;
+			// if not yet online, bootstrap every 20 seconds
+			dbg(2, "Reconnect: Tox NOT online yet, bootstrapping again\n");
+			bootstrap(tox);
+		}
+    }
+	// -------- try to go online --------
+}
+
+
+void check_online_status(Tox *tox)
+{
+	if (my_connection_status == TOX_CONNECTION_NONE)
+	{
+		if ((get_unix_time() - my_last_offline_timestamp) > RECONNECT_AFTER_OFFLINE_SECONDS)
+		{
+			// we are offline for too long, try to reconnect
+			reconnect(tox);
+		}
 	}
 }
 
@@ -2233,14 +2290,17 @@ void self_connection_status_cb(Tox *tox, TOX_CONNECTION connection_status, void 
         case TOX_CONNECTION_NONE:
             dbg(2, "Offline\n");
 			my_connection_status = TOX_CONNECTION_NONE;
+			my_last_offline_timestamp = get_unix_time();
             break;
         case TOX_CONNECTION_TCP:
             dbg(2, "Online, using TCP\n");
 			my_connection_status = TOX_CONNECTION_TCP;
+			my_last_online_timestamp = get_unix_time();
             break;
         case TOX_CONNECTION_UDP:
             dbg(2, "Online, using UDP\n");
 			my_connection_status = TOX_CONNECTION_UDP;
+			my_last_online_timestamp = get_unix_time();
             break;
     }
 }
@@ -3821,6 +3881,9 @@ int main(int argc, char *argv[])
 	global_video_active = 0;
 	global_send_first_frame = 0;
 
+	my_last_offline_timestamp = -1;
+	my_last_online_timestamp = -1;
+
 	// valid audio bitrates: [ bit_rate < 6 || bit_rate > 510 ]
 	global_audio_bit_rate = DEFAULT_GLOBAL_AUD_BITRATE;
 	global_video_bit_rate = DEFAULT_GLOBAL_VID_BITRATE;
@@ -3975,6 +4038,8 @@ int main(int argc, char *argv[])
     int len = strlen(path) - 1;
     avatar_set(tox, path, len);
 
+
+	// -------- try to go online --------
 	long long unsigned int cur_time = time(NULL);
 	uint8_t off = 1;
 	long long loop_counter = 0;
@@ -3989,16 +4054,17 @@ int main(int argc, char *argv[])
 			break;
         }
         c_sleep(20);
-	loop_counter++;
+		loop_counter++;
 		
-	if (loop_counter > (50 * 20))
-	{
-		loop_counter = 0;
-		// if not yet online, bootstrap every 20 seconds
-		dbg(2, "Tox NOT online yet, bootstrapping again\n");
-		bootstrap(tox);
-	}
+		if (loop_counter > (50 * 20))
+		{
+			loop_counter = 0;
+			// if not yet online, bootstrap every 20 seconds
+			dbg(2, "Tox NOT online yet, bootstrapping again\n");
+			bootstrap(tox);
+		}
     }
+	// -------- try to go online --------
 
 
     TOXAV_ERR_NEW rc;
@@ -4074,6 +4140,7 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
+			check_online_status(tox);
 			check_dir(tox);
 			check_friends_dir(tox);
 		}
