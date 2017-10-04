@@ -1832,10 +1832,12 @@ void cmd_vcm(Tox *tox, uint32_t friend_number)
 	if (global_video_active == 1)
 	{
 		send_text_message_to_friend(tox, friend_number, "there is already a video session active");
+		dbg(9 ,"fnum=%d msg=there is already a video session active\n", friend_number);
 	}
 	else
 	{
 		send_text_message_to_friend(tox, friend_number, "i am trying to send my video ...");
+		dbg(9 ,"fnum=%d msg=i am trying to send my video ...\n", friend_number);
 
 		if (mytox_av != NULL)
 		{
