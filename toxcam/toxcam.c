@@ -809,7 +809,7 @@ void bootstap_nodes(Tox *tox, DHT_node nodes[], int number_of_nodes, int add_as_
 			// dbg(9, "bootstrap:%s %d [TRUE]res=%d\n", nodes[i].ip, nodes[i].port, res);
 		}
 
-		((add_as_tcp_relay == 1) && (switch_tcponly == 1))
+		if ((add_as_tcp_relay == 1) && (switch_tcponly == 1))
 		{
 			res = tox_add_tcp_relay(tox, nodes[i].ip, nodes[i].port, nodes[i].key_bin, &error); // use also as TCP relay
 			if (res != true)
