@@ -20,6 +20,7 @@ machine:
     RASPI_PKGSDIR: "/home/ubuntu/pkgs/"
 ## ----------- RASPI cross compile ----------------
     # ---------------------------------------------------
+    # v0.1.10 lower init vbitrate    ac622abd1f6b8ff5122281e1e3f7053bcdb23fad
     # v0.1.10 cfg_dec2               3921fd04ee233a21befa960cf26214410e1b6582
     # v0.1.10 cfg_dec                94bf0a32adac079b7739c6d32cfc0e504993f962
     # v0.1.10 onlyKF    74dc53cf180e32f92ebb3cb5e8542e919cc3b343
@@ -35,7 +36,7 @@ machine:
     # c-toxcore v0.1.2 a096c71db867ac83fc3e01e0fbe98573d20f9286
     # ---------------------------------------------------
     # c-toxcore version used
-    CTOXCORE_VERSION_HASH: 3921fd04ee233a21befa960cf26214410e1b6582
+    CTOXCORE_VERSION_HASH: ac622abd1f6b8ff5122281e1e3f7053bcdb23fad
     # c-toxcore repo used
     # CTOXCORE_URL: "https://github.com/TokTok/c-toxcore"
     CTOXCORE_URL: "https://github.com/zoff99/c-toxcore"
