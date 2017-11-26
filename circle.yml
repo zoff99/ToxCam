@@ -38,7 +38,7 @@ machine:
     # ---------------------------------------------------
     # c-toxcore version used
     # CTOXCORE_VERSION_HASH: master
-    CTOXCORE_VERSION_HASH: 85105d15e60d611eac204af3f97259bf7abca59e
+    CTOXCORE_VERSION_HASH: 734cf42d46dec15f9e462fb51350a3bdef35ab95
     # c-toxcore repo used
     # CTOXCORE_URL: "https://github.com/TokTok/c-toxcore"
     CTOXCORE_URL: "https://github.com/zoff99/c-toxcore"
