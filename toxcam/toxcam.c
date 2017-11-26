@@ -3373,7 +3373,7 @@ void *thread_av(void *data)
                     vv = uu + ((ww / 2) * (hh / 2));
 
                     // memset(yy, 130, (size_t)(ww * hh)); // set Y plane to grey-ish
-                    read_yuf_file(fix_frame_num, y, (size_t)((ww * hh) * 1.5));
+                    read_yuf_file(fix_frame_num, yy, (size_t)((ww * hh) * 1.5));
 					fix_frame_num = 3 - fix_frame_num;
 
 					TOXAV_ERR_SEND_FRAME error = 0;
