@@ -924,17 +924,17 @@ void bootstrap(Tox *tox)
 	if (switch_nodelist_2 == 0)
 	{
 		dbg(9, "nodeslist:1\n");
-		bootstap_nodes(tox, &nodes1, (int)(sizeof(nodes1)/sizeof(DHT_node)), 1);
+		bootstap_nodes(tox, nodes1, (int)(sizeof(nodes1)/sizeof(DHT_node)), 1);
 	}
 	else if (switch_nodelist_2 == 2)
 	{
 		dbg(9, "nodeslist:3\n");
-		bootstap_nodes(tox, &nodes3, (int)(sizeof(nodes3)/sizeof(DHT_node)), 0);
+		bootstap_nodes(tox, nodes3, (int)(sizeof(nodes3)/sizeof(DHT_node)), 0);
 	}
 	else // (switch_nodelist_2 == 1)
 	{
 		dbg(9, "nodeslist:2\n");
-		bootstap_nodes(tox, &nodes2, (int)(sizeof(nodes2)/sizeof(DHT_node)), 1);
+		bootstap_nodes(tox, nodes2, (int)(sizeof(nodes2)/sizeof(DHT_node)), 1);
 	}
 }
 
