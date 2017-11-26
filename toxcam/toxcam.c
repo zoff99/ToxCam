@@ -3406,7 +3406,7 @@ void *thread_av(void *data)
 						}
 					}
 
-                    free(y);
+                    free(yy);
 				}
 
             }
