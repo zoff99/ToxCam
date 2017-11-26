@@ -3320,6 +3320,8 @@ void *thread_av(void *data)
 		v4l_startread();
 	}
 
+	int fix_frame_num = 1;
+
     while (toxav_iterate_thread_stop != 1)
 	{
 		if (global_video_active == 1)
@@ -3370,8 +3372,9 @@ void *thread_av(void *data)
                     uu = yy + (ww * hh);
                     vv = uu + ((ww / 2) * (hh / 2));
 
-                    memset(yy, 130, (size_t)(ww * hh)); // set Y plane to grey-ish
-                    // read_yuf_file(0, y, (size_t)((ww * hh) * 1.5));
+                    // memset(yy, 130, (size_t)(ww * hh)); // set Y plane to grey-ish
+                    read_yuf_file(fix_frame_num, y, (size_t)((ww * hh) * 1.5));
+					fix_frame_num = 3 - fix_frame_num;
 
 					TOXAV_ERR_SEND_FRAME error = 0;
 					toxav_video_send_frame(av, friend_to_send_video_to, ww, hh,
@@ -4066,10 +4069,10 @@ int main(int argc, char *argv[])
 	Tox *tox = create_tox();
 	global_start_time = time(NULL);
 
-    const char *name = "ToxCam";
+    const char *name = "VideoTest";
     tox_self_set_name(tox, (uint8_t *)name, strlen(name), NULL);
 
-    const char *status_message = "This is your ToxCam";
+    const char *status_message = "This is Tox VideoTest";
     tox_self_set_status_message(tox, (uint8_t *)status_message, strlen(status_message), NULL);
 
     Friends.max_idx = 0;
