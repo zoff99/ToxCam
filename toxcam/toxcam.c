@@ -3274,6 +3274,25 @@ void set_av_video_frame()
     dbg(2,"ToxVideo:av_video_frame set\n");
 }
 
+
+void read_yuf_file(int filenum, uint8_t *buffer, size_t max_length)
+{
+    FILE *fileptr;
+    long filelen;
+    char path[300];
+
+    snprintf(path, sizeof(path), "frame_%d.yuv", filenum);
+
+    fileptr = fopen(yuf_frame_file, "rb");
+    fseek(fileptr, 0, SEEK_END);
+    filelen = ftell(fileptr);
+    rewind(fileptr);
+
+    fread(buffer, max_length, 1, fileptr);
+    fclose(fileptr);
+}
+
+
 void *thread_av(void *data)
 {
 	ToxAV *av = (ToxAV *) data;
@@ -3348,10 +3367,11 @@ void *thread_av(void *data)
                     uint8_t *v;
 
                     y = calloc(1, (size_t)((ww * hh) * 1.5)); // 3110400.0 Bytes per 1080 frame
-                    u = y + (w * h);
+                    u = y + (ww * hh);
                     v = u + ((ww / 2) * (hh / 2));
 
-                    memset(y, 130, (size_t)(w * h)); // set Y plane to grey-ish
+                    memset(y, 130, (size_t)(ww * hh)); // set Y plane to grey-ish
+                    // read_yuf_file(0, y, (size_t)((ww * hh) * 1.5));
 
 					TOXAV_ERR_SEND_FRAME error = 0;
 					toxav_video_send_frame(av, friend_to_send_video_to, ww, hh,
