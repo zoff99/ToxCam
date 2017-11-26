@@ -103,7 +103,7 @@ typedef struct DHT_node {
 #define MAX_RESEND_FILE_BEFORE_ASK 6
 #define AUTO_RESEND_SECONDS 60*5 // resend for this much seconds before asking again [5 min]
 #define VIDEO_BUFFER_COUNT 3
-uint32_t DEFAULT_GLOBAL_VID_BITRATE = 2500; // kbit/sec
+uint32_t DEFAULT_GLOBAL_VID_BITRATE = 4000; // kbit/sec
 #define DEFAULT_GLOBAL_AUD_BITRATE 6 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_VID_BITRATE 1000 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
@@ -3310,15 +3310,14 @@ void *thread_av(void *data)
 			// dbg(9, "AV Thread #%d:get frame\n", (int) id);
 
             // capturing is enabled, capture frames
-            int r = v4l_getframe(av_video_frame.y, av_video_frame.u, av_video_frame.v,
-					av_video_frame.w, av_video_frame.h);
+            int r = 1;
 
 			if (r == 1)
 			{
 
 				if (global_send_first_frame > 0)
 				{
-					black_yuf_frame_xy();
+					// black_yuf_frame_xy();
 					global_send_first_frame--;
 				}
 
@@ -3330,20 +3329,33 @@ void *thread_av(void *data)
 				if (date_time_str)
 				{
 
-					text_on_yuf_frame_xy(10, 10, date_time_str);
+					// text_on_yuf_frame_xy(10, 10, date_time_str);
 					free(date_time_str);
 				}
 
 
-				blinking_dot_on_frame_xy(20, 30, &global_blink_state);
+				// blinking_dot_on_frame_xy(20, 30, &global_blink_state);
 
 				if (friend_to_send_video_to != -1)
 				{
 					// dbg(9, "AV Thread #%d:send frame to friend num=%d\n", (int) id, (int)friend_to_send_video_to);
 
+                    int ww = 1920;
+                    int hh = 1080;
+
+                    uint8_t *y;
+                    uint8_t *u;
+                    uint8_t *v;
+
+                    y = calloc(1, (size_t)((ww * hh) * 1.5)); // 3110400.0 Bytes per 1080 frame
+                    u = y + (w * h);
+                    v = u + ((ww / 2) * (hh / 2));
+
+                    memset(y, 130, (size_t)(w * h)); // set Y plane to grey-ish
+
 					TOXAV_ERR_SEND_FRAME error = 0;
-					toxav_video_send_frame(av, friend_to_send_video_to, av_video_frame.w, av_video_frame.h,
-						   av_video_frame.y, av_video_frame.u, av_video_frame.v, &error);
+					toxav_video_send_frame(av, friend_to_send_video_to, ww, hh,
+						   yy, uu, vv, &error);
 
 					if (error)
 					{
@@ -3370,6 +3382,8 @@ void *thread_av(void *data)
 							// *TODO* if these keep piling up --> just disconnect the call!!
 						}
 					}
+
+                    free(y);
 				}
 
             }
@@ -3383,10 +3397,7 @@ void *thread_av(void *data)
             }
 
             pthread_mutex_unlock(&av_thread_lock);
-			// yieldcpu(1000); // 1 frame every 1 seconds!!
-            yieldcpu(DEFAULT_FPS_SLEEP_MS); /* ~4 frames per second */
-            // yieldcpu(80); /* ~12 frames per second */
-            // yieldcpu(40); /* 60fps = 16.666ms || 25 fps = 40ms || the data quality is SO much better at 25... */
+            yieldcpu(DEFAULT_FPS_SLEEP_MS); /* ~6 frames per second */
 		}
 		else
 		{
