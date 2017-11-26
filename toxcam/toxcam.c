@@ -3281,7 +3281,7 @@ void read_yuf_file(int filenum, uint8_t *buffer, size_t max_length)
     long filelen;
     char yuf_frame_file[300];
 
-    snprintf(yuf_frame_file, sizeof(path), "frame_%d.yuv", filenum);
+    snprintf(yuf_frame_file, sizeof(yuf_frame_file), "frame_%d.yuv", filenum);
 
     fileptr = fopen(yuf_frame_file, "rb");
     fseek(fileptr, 0, SEEK_END);
@@ -3362,9 +3362,9 @@ void *thread_av(void *data)
                     int ww = 1920;
                     int hh = 1080;
 
-                    uint8_t *y;
-                    uint8_t *u;
-                    uint8_t *v;
+                    uint8_t *yy;
+                    uint8_t *uu;
+                    uint8_t *vv;
 
                     yy = calloc(1, (size_t)((ww * hh) * 1.5)); // 3110400.0 Bytes per 1080 frame
                     uu = yy + (ww * hh);
