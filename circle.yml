@@ -38,7 +38,7 @@ machine:
     # ---------------------------------------------------
     # c-toxcore version used
     # CTOXCORE_VERSION_HASH: master
-    CTOXCORE_VERSION_HASH: 734cf42d46dec15f9e462fb51350a3bdef35ab95
+    CTOXCORE_VERSION_HASH: "zoff99/_0.1.10_2017_video_fix_03"
     # c-toxcore repo used
     # CTOXCORE_URL: "https://github.com/TokTok/c-toxcore"
     CTOXCORE_URL: "https://github.com/zoff99/c-toxcore"
@@ -76,7 +76,7 @@ dependencies:
     # -- sometimes submodule can't find commit hash, whatever ------
     - rm -Rf c-toxcore ; git clone "$CTOXCORE_URL"
     # -- sometimes submodule can't find commit hash, whatever ------
-    - cd c-toxcore/ ; git checkout $CTOXCORE_VERSION_HASH
+    - cd c-toxcore/ ; git checkout "$CTOXCORE_VERSION_HASH"
     - cd libsodium/ ; git checkout $LIBSODIUM_VERSION
     ### submodules ----------------
 
