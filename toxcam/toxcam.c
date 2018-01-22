@@ -3361,8 +3361,8 @@ void *thread_av(void *data)
 				{
 					// dbg(9, "AV Thread #%d:send frame to friend num=%d\n", (int) id, (int)friend_to_send_video_to);
 
-                    int ww = 1920;
-                    int hh = 1080;
+                    int ww = 1080;
+                    int hh = 720;
 
                     uint8_t *yy;
                     uint8_t *uu;
