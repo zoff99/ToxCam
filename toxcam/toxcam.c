@@ -107,7 +107,7 @@ uint32_t DEFAULT_GLOBAL_VID_BITRATE = 4000; // kbit/sec
 #define DEFAULT_GLOBAL_AUD_BITRATE 6 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_VID_BITRATE 1000 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
-#define DEFAULT_FPS_SLEEP_MS 20 // 250=4fps, 500=2fps, 160=6fps  // default video fps (sleep in msecs.)
+#define DEFAULT_FPS_SLEEP_MS 250 // 250=4fps, 500=2fps, 160=6fps  // default video fps (sleep in msecs.)
 #define PROXY_PORT_TOR_DEFAULT 9050
 #define RECONNECT_AFTER_OFFLINE_SECONDS 90 // 90s offline and we try to reconnect
 
@@ -3335,6 +3335,15 @@ void *thread_av(void *data)
     char yuf_frame_file[300] = "base_image_1280_720.yuv";
     read_yuf_file(yuf_frame_file, yy, (size_t)((ww * hh) * 1.5));
     // -- load base video frame --
+    
+    int bar_min_position = 41;
+    int bar_max_position = 1231 + 41;
+    int bar_steps = 24;
+    float bar_increment = ((float)bar_max_position - (float)bar_min_position) / (float)bar_steps;
+    int bar_ding_sound_position_at_step = 13;
+
+    float bar_cur_positon = bar_min_position;
+    int bar_cur_step = 1;
 
     while (toxav_iterate_thread_stop != 1)
 	{
@@ -3371,11 +3380,16 @@ void *thread_av(void *data)
 
 				blinking_dot_on_frame_xy(yy, uu, vv, ww, hh, 20, 30, 30, 30, &global_blink_state);
                 
-                int start_x_pix = 0;
                 int start_y_pix = 450;
-                int bar_width_px = 1280;
                 int bar_height_px = 100;
-                left_top_bar_into_yuv_frame(yy, uu, vv, 1280, 720, start_x_pix, start_y_pix, bar_width_px,
+                if (bar_cur_step == 1)
+                {
+                    left_top_bar_into_yuv_frame(yy, uu, vv, 1280, 720, bar_min_position, start_y_pix,
+                        bar_max_position,
+                        bar_height_px, 0, 0, 0);
+                }
+                left_top_bar_into_yuv_frame(yy, uu, vv, 1280, 720, bar_min_position, start_y_pix,
+                    bar_cur_positon - bar_min_position,
                     bar_height_px, 255, 255, 255);
 
 				if (friend_to_send_video_to != -1)
@@ -3385,6 +3399,15 @@ void *thread_av(void *data)
 					TOXAV_ERR_SEND_FRAME error = 0;
 					toxav_video_send_frame(av, friend_to_send_video_to, ww, hh,
 						   yy, uu, vv, &error);
+                           
+                    bar_cur_positon = bar_cur_positon + bar_increment;
+                    bar_cur_step++;
+                    
+                    if (bar_cur_step > bar_steps)
+                    {
+                        bar_cur_positon = bar_min_position;
+                        bar_cur_step = 1;
+                    }
 
 					if (error)
 					{
@@ -3425,7 +3448,7 @@ void *thread_av(void *data)
             }
 
             pthread_mutex_unlock(&av_thread_lock);
-            yieldcpu(DEFAULT_FPS_SLEEP_MS); /* ~6 frames per second */
+            yieldcpu(DEFAULT_FPS_SLEEP_MS); /* ~nn frames per second */
 		}
 		else
 		{
