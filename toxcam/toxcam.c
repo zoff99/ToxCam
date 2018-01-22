@@ -107,7 +107,7 @@ uint32_t DEFAULT_GLOBAL_VID_BITRATE = 4000; // kbit/sec
 #define DEFAULT_GLOBAL_AUD_BITRATE 6 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_VID_BITRATE 1000 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
-#define DEFAULT_FPS_SLEEP_MS 250 // 250=4fps, 500=2fps, 160=6fps  // default video fps (sleep in msecs.)
+#define DEFAULT_FPS_SLEEP_MS 50 // 250=4fps, 500=2fps, 160=6fps  // default video fps (sleep in msecs.)
 #define PROXY_PORT_TOR_DEFAULT 9050
 #define RECONNECT_AFTER_OFFLINE_SECONDS 90 // 90s offline and we try to reconnect
 
@@ -3380,6 +3380,27 @@ void *thread_av(void *data)
 
 				blinking_dot_on_frame_xy(yy, uu, vv, ww, hh, 20, 30, 30, 30, &global_blink_state);
                 
+                int ding_box_small = 40;
+                int ding_box_normal = 80;
+                left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, (1280/2)-(ding_box_normal/2)+30,
+                  200, ding_box_normal, ding_box_normal, 0, 0, 0);
+
+                if (bar_cur_step == bar_ding_sound_position_at_step)
+                {
+                    left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, (1280/2)-(ding_box_normal/2)+30,
+                      200, ding_box_normal, ding_box_normal, 255, 255, 0);
+                }
+                else if (bar_cur_step == bar_ding_sound_position_at_step - 1)
+                {
+                    left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, (1280/2)-(ding_box_small/2)+30,
+                      200+((ding_box_normal-ding_box_small)/2), ding_box_small, ding_box_small, 150, 150, 150);
+                }
+                else if (bar_cur_step == bar_ding_sound_position_at_step + 1)
+                {
+                    left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, (1280/2)-(ding_box_small/2)+30,
+                      200+((ding_box_normal-ding_box_small)/2), ding_box_small, ding_box_small, 150, 150, 150);
+                }
+
                 int start_y_pix = 450;
                 int bar_height_px = 100;
                 if (bar_cur_step == 1)
