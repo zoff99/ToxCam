@@ -241,13 +241,13 @@ void av_local_disconnect(ToxAV *av, uint32_t num);
 void run_cmd_return_output(const char *command, char* output, int lastline);
 void save_resumable_fts(Tox *m, uint32_t friendnum);
 void resume_resumable_fts(Tox *m, uint32_t friendnum);
-void left_top_bar_into_yuv_frame(int bar_start_x_pix, int bar_start_y_pix, int bar_w_pix, int bar_h_pix, uint8_t r, uint8_t g, uint8_t b);
-void print_font_char(int start_x_pix, int start_y_pix, int font_char_num, uint8_t col_value);
-void text_on_yuf_frame_xy(int start_x_pix, int start_y_pix, const char* text);
-void blinking_dot_on_frame_xy(int start_x_pix, int start_y_pix, int* state);
+void left_top_bar_into_yuv_frame(uint8_t *yy, uint8_t *uu, uint8_t *vv, int ww, int hh, int bar_start_x_pix, int bar_start_y_pix, int bar_w_pix, int bar_h_pix, uint8_t r, uint8_t g, uint8_t b);
+void print_font_char(uint8_t *yy, uint8_t *uu, uint8_t *vv, int ww, int hh, int start_x_pix, int start_y_pix, int font_char_num, uint8_t col_value);
+void text_on_yuf_frame_xy(uint8_t *yy, uint8_t *uu, uint8_t *vv, int ww, int hh, int start_x_pix, int start_y_pix, const char* text);
+void blinking_dot_on_frame_xy(uint8_t *yy, uint8_t *uu, uint8_t *vv, int ww, int hh, int start_x_pix, int start_y_pix, int dot_w, int dot_h, int* state);
 void black_yuf_frame_xy();
 void rbg_to_yuv(uint8_t r, uint8_t g, uint8_t b, uint8_t *y, uint8_t *u, uint8_t *v);
-void set_color_in_yuv_frame_xy(uint8_t *yuv_frame, int px_x, int px_y, int frame_w, int frame_h, uint8_t r, uint8_t g, uint8_t b);
+void set_color_in_yuv_frame_xy(uint8_t *yy, uint8_t *uu, uint8_t *vv, int px_x, int px_y, int frame_w, int frame_h, uint8_t r, uint8_t g, uint8_t b);
 
 
 const char *savedata_filename = "savedata.tox";
@@ -3364,12 +3364,19 @@ void *thread_av(void *data)
 				if (date_time_str)
 				{
 
-					// text_on_yuf_frame_xy(10, 10, date_time_str);
+					text_on_yuf_frame_xy(yy, uu, vv, ww, hh, 10, 10, date_time_str);
 					free(date_time_str);
 				}
 
 
-				// blinking_dot_on_frame_xy(20, 30, &global_blink_state);
+				blinking_dot_on_frame_xy(yy, uu, vv, ww, hh, 20, 30, 30, 30, &global_blink_state);
+                
+                int start_x_pix = 0;
+                int start_y_pix = 450;
+                int bar_width_px = 1280;
+                int bar_height_px = 100;
+                left_top_bar_into_yuv_frame(yy, uu, vv, 1280, 720, start_x_pix, start_y_pix, bar_width_px,
+                    bar_height_px, 255, 255, 255);
 
 				if (friend_to_send_video_to != -1)
 				{
@@ -3654,12 +3661,11 @@ char font8x8_basic[128][8] = {
 // ":" -> [58]
 
 
-void print_font_char(int start_x_pix, int start_y_pix, int font_char_num, uint8_t col_value)
+void print_font_char(uint8_t *yy, uint8_t *uu, uint8_t *vv, int ww, int hh, int start_x_pix, int start_y_pix, int font_char_num, uint8_t col_value)
 {
 	int font_w = 8;
 	int font_h = 8;
 
-	uint8_t *y_plane = av_video_frame.y;
 	// uint8_t col_value = 0; // black
 	char *bitmap = font8x8_basic[font_char_num];
 
@@ -3668,9 +3674,11 @@ void print_font_char(int start_x_pix, int start_y_pix, int font_char_num, uint8_
 	int offset = 0;
 	int set = 0;
 
+    uint8_t *y_plane = yy;
+
 	for (k=0;k<font_h;k++)
 	{
-		y_plane = av_video_frame.y + ((start_y_pix + k) * av_video_frame.w);
+		y_plane = yy + ((start_y_pix + k) * ww);
 		y_plane = y_plane + start_x_pix;
 		for (j=0;j<font_w;j++)
 		{
@@ -3685,15 +3693,15 @@ void print_font_char(int start_x_pix, int start_y_pix, int font_char_num, uint8_
 
 }
 
-void black_yuf_frame_xy()
+void black_yuf_frame_xy(uint8_t *yy, uint8_t *uu, uint8_t *vv, int ww, int hh)
 {
 	const uint8_t r = 0;
 	const uint8_t g = 0;
 	const uint8_t b = 0;
-	left_top_bar_into_yuv_frame(0, 0, av_video_frame.w, av_video_frame.h, r, g, b);
+	left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, 0, 0, ww, hh, r, g, b);
 }
 
-void blinking_dot_on_frame_xy(int start_x_pix, int start_y_pix, int* state)
+void blinking_dot_on_frame_xy(uint8_t *yy, uint8_t *uu, uint8_t *vv, int ww, int hh, int start_x_pix, int start_y_pix, int dot_w, int dot_h, int* state)
 {
 	uint8_t r;
 	uint8_t g;
@@ -3705,7 +3713,7 @@ void blinking_dot_on_frame_xy(int start_x_pix, int start_y_pix, int* state)
 		r = 255;
 		g = 0;
 		b = 0;
-		left_top_bar_into_yuv_frame(start_x_pix, start_y_pix, 30, 30, r, g, b);
+		left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, start_x_pix, start_y_pix, dot_w, dot_h, r, g, b);
 	}
 	else if (*state == 1)
 	{
@@ -3713,7 +3721,7 @@ void blinking_dot_on_frame_xy(int start_x_pix, int start_y_pix, int* state)
 		g = 255;
 		b = 0;
 		*state = 2;
-		left_top_bar_into_yuv_frame(start_x_pix, start_y_pix, 30, 30, r, g, b);
+		left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, start_x_pix, start_y_pix, dot_w, dot_h, r, g, b);
 	}
 	else
 	{
@@ -3721,12 +3729,12 @@ void blinking_dot_on_frame_xy(int start_x_pix, int start_y_pix, int* state)
 		g = 255;
 		b = 0;
 		*state = 0;
-		left_top_bar_into_yuv_frame(start_x_pix, start_y_pix, 30, 30, r, g, b);
+		left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, start_x_pix, start_y_pix, dot_w, dot_h, r, g, b);
 	}
 }
 
 
-void set_color_in_yuv_frame_xy(uint8_t *yuv_frame, int px_x, int px_y, int frame_w, int frame_h, uint8_t r, uint8_t g, uint8_t b)
+void set_color_in_yuv_frame_xy(uint8_t *yy, uint8_t *uu, uint8_t *vv, int px_x, int px_y, int frame_w, int frame_h, uint8_t r, uint8_t g, uint8_t b)
 {
 	int size_total = frame_w * frame_h;
 
@@ -3736,9 +3744,9 @@ void set_color_in_yuv_frame_xy(uint8_t *yuv_frame, int px_x, int px_y, int frame
 
 	rbg_to_yuv(r, g, b, &y, &u, &v);
 
-	yuv_frame[px_y * frame_w + px_x] = y;
-	yuv_frame[(px_y / 2) * (frame_w / 2) + (px_x / 2) + size_total] = u;
-	yuv_frame[(px_y / 2) * (frame_w / 2) + (px_x / 2) + size_total + (size_total / 4)] = v;
+	yy[px_y * frame_w + px_x] = y;
+	uu[(px_y / 2) * (frame_w / 2) + (px_x / 2)] = u;
+	vv[(px_y / 2) * (frame_w / 2) + (px_x / 2)] = v;
 }
 
 
@@ -3766,14 +3774,14 @@ void rbg_to_yuv(uint8_t r, uint8_t g, uint8_t b, uint8_t *y, uint8_t *u, uint8_t
 	*v = RGB2V(r, g, b);
 }
 
-void text_on_yuf_frame_xy(int start_x_pix, int start_y_pix, const char* text)
+void text_on_yuf_frame_xy(uint8_t *yy, uint8_t *uu, uint8_t *vv, int ww, int hh, int start_x_pix, int start_y_pix, const char* text)
 {
 	int carriage = 0;
 	const int letter_width = 8;
 	const int letter_spacing = 1;
 
 	int block_needed_width = 2 + 2 + (strlen(text) * (letter_width + letter_spacing));
-	left_top_bar_into_yuv_frame(start_x_pix, start_y_pix, block_needed_width, 12, 255, 255, 255);
+	left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, start_x_pix, start_y_pix, block_needed_width, 12, 255, 255, 255);
 
 	int looper;
 
@@ -3782,7 +3790,7 @@ void text_on_yuf_frame_xy(int start_x_pix, int start_y_pix, const char* text)
 		uint8_t c = text[looper];
 		if ((c > 0) && (c < 127))
 		{
-			print_font_char((12 + ((letter_width + letter_spacing) * carriage)), 12, c, 0);
+			print_font_char(yy, uu, vv, ww, hh, (12 + ((letter_width + letter_spacing) * carriage)), 12, c, 0);
 		}
 		else
 		{
@@ -3792,7 +3800,7 @@ void text_on_yuf_frame_xy(int start_x_pix, int start_y_pix, const char* text)
 	}
 }
 
-void left_top_bar_into_yuv_frame(int bar_start_x_pix, int bar_start_y_pix, int bar_w_pix, int bar_h_pix, uint8_t r, uint8_t g, uint8_t b)
+void left_top_bar_into_yuv_frame(uint8_t *yy, uint8_t *uu, uint8_t *vv, int ww, int hh, int bar_start_x_pix, int bar_start_y_pix, int bar_w_pix, int bar_h_pix, uint8_t r, uint8_t g, uint8_t b)
 {
 	// int bar_width = bar_w_pix; // 150; // should be mulitple of 2 !!
 	// int bar_height = bar_h_pix; // 20; // should be mulitple of 2 !!
@@ -3812,8 +3820,8 @@ void left_top_bar_into_yuv_frame(int bar_start_x_pix, int bar_start_y_pix, int b
 		for (j=0;j<bar_w_pix;j++)
 		{
 			// ******** // *y_plane = col_value; // luma value to 255 (white)
-			set_color_in_yuv_frame_xy(av_video_frame.y, (bar_start_x_pix + j), (bar_start_y_pix + k),
-				av_video_frame.w, av_video_frame.h, r, g, b);
+			set_color_in_yuv_frame_xy(yy, uu, vv, (bar_start_x_pix + j), (bar_start_y_pix + k),
+				ww, hh, r, g, b);
 
 			// y_plane = y_plane + 1;
 		}
