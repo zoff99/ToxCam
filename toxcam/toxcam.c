@@ -575,7 +575,7 @@ Tox *create_tox()
 
 	// ------------------------------------------------------------
 	// set our own handler for c-toxcore logging messages!!
-	options.log_callback = tox_log_cb__custom;
+	// options.log_callback = tox_log_cb__custom;
 	// ------------------------------------------------------------
 
 
@@ -3319,6 +3319,23 @@ void *thread_av(void *data)
 
 	int fix_frame_num = 1;
 
+    // -- load base video frame --
+    int ww = 1280;
+    int hh = 720;
+
+    uint8_t *yy;
+    uint8_t *uu;
+    uint8_t *vv;
+
+    yy = calloc(1, (size_t)((ww * hh) * 1.5)); // 3110400.0 Bytes per 1080 frame
+    uu = yy + (ww * hh);
+    vv = uu + ((ww / 2) * (hh / 2));
+
+    // memset(yy, 130, (size_t)(ww * hh)); // set Y plane to grey-ish
+    char yuf_frame_file[300] = "base_image_1280_720.yuv";
+    read_yuf_file(yuf_frame_file, yy, (size_t)((ww * hh) * 1.5));
+    // -- load base video frame --
+
     while (toxav_iterate_thread_stop != 1)
 	{
 		if (global_video_active == 1)
@@ -3358,22 +3375,6 @@ void *thread_av(void *data)
 				{
 					// dbg(9, "AV Thread #%d:send frame to friend num=%d\n", (int) id, (int)friend_to_send_video_to);
 
-                    int ww = 1080;
-                    int hh = 720;
-
-                    uint8_t *yy;
-                    uint8_t *uu;
-                    uint8_t *vv;
-
-                    yy = calloc(1, (size_t)((ww * hh) * 1.5)); // 3110400.0 Bytes per 1080 frame
-                    uu = yy + (ww * hh);
-                    vv = uu + ((ww / 2) * (hh / 2));
-
-                    // memset(yy, 130, (size_t)(ww * hh)); // set Y plane to grey-ish
-                    char yuf_frame_file[300] = "base_image_1280_720.yuv";
-                    read_yuf_file(yuf_frame_file, yy, (size_t)((ww * hh) * 1.5));
-					fix_frame_num = 3 - fix_frame_num;
-
 					TOXAV_ERR_SEND_FRAME error = 0;
 					toxav_video_send_frame(av, friend_to_send_video_to, ww, hh,
 						   yy, uu, vv, &error);
@@ -3404,7 +3405,6 @@ void *thread_av(void *data)
 						}
 					}
 
-                    free(yy);
 				}
 
             }
@@ -3425,6 +3425,8 @@ void *thread_av(void *data)
 			yieldcpu(100);
 		}
     }
+
+    free(yy);
 
 
 	if (video_call_enabled == 1)
