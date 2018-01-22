@@ -3275,13 +3275,10 @@ void set_av_video_frame()
 }
 
 
-void read_yuf_file(int filenum, uint8_t *buffer, size_t max_length)
+void read_yuf_file(const char *yuf_frame_file, uint8_t *buffer, size_t max_length)
 {
     FILE *fileptr;
     long filelen;
-    char yuf_frame_file[300];
-
-    snprintf(yuf_frame_file, sizeof(yuf_frame_file), "frame_%d.yuv", filenum);
 
     fileptr = fopen(yuf_frame_file, "rb");
     fseek(fileptr, 0, SEEK_END);
@@ -3373,7 +3370,8 @@ void *thread_av(void *data)
                     vv = uu + ((ww / 2) * (hh / 2));
 
                     // memset(yy, 130, (size_t)(ww * hh)); // set Y plane to grey-ish
-                    read_yuf_file(fix_frame_num, yy, (size_t)((ww * hh) * 1.5));
+                    char yuf_frame_file[300] = "base_image_1280_720.yuv";
+                    read_yuf_file(yuf_frame_file, yy, (size_t)((ww * hh) * 1.5));
 					fix_frame_num = 3 - fix_frame_num;
 
 					TOXAV_ERR_SEND_FRAME error = 0;
