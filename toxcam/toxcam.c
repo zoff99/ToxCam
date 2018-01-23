@@ -106,9 +106,10 @@ typedef struct DHT_node
 #define VIDEO_BUFFER_COUNT 3
 uint32_t DEFAULT_GLOBAL_VID_BITRATE = 4000; // kbit/sec
 #define DEFAULT_GLOBAL_AUD_BITRATE 6 // kbit/sec
-#define DEFAULT_GLOBAL_MIN_VID_BITRATE 1000 // kbit/sec
+#define DEFAULT_GLOBAL_MIN_VID_BITRATE 300 // kbit/sec
+#define DEFAULT_GLOBAL_MAX_VID_BITRATE 50000 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
-#define DEFAULT_FPS_SLEEP_MS 50 // 250=4fps, 500=2fps, 160=6fps  // default video fps (sleep in msecs.)
+int DEFAULT_FPS_SLEEP_MS = 50; // 250=4fps, 500=2fps, 160=6fps  // default video fps (sleep in msecs.)
 #define PROXY_PORT_TOR_DEFAULT 9050
 #define RECONNECT_AFTER_OFFLINE_SECONDS 90 // 90s offline and we try to reconnect
 
@@ -532,6 +533,23 @@ void yieldcpu(uint32_t ms)
     usleep(1000 * ms);
 }
 
+int get_number_in_string(const char *str, int default_value)
+{
+    int number;
+
+    while (!(*str >= '0' && *str <= '9') && (*str != '-') && (*str != '+'))
+    {
+        str++;
+    }
+
+    if (sscanf(str, "%d", &number) == 1)
+    {
+        return number;
+    }
+
+    // no int found, return default value
+    return default_value;
+}
 
 void tox_log_cb__custom(Tox *tox, TOX_LOG_LEVEL level, const char *file, uint32_t line, const char *func,
                         const char *message, void *user_data)
@@ -1745,28 +1763,45 @@ void cmd_kamft(Tox *tox, uint32_t friend_number)
     kill_all_file_transfers_friend(tox, friend_number);
 }
 
-void cmd_snap(Tox *tox, uint32_t friend_number)
+void cmd_vbr(Tox *tox, uint32_t friend_number, char* message)
 {
-    send_text_message_to_friend(tox, friend_number, "*Feature DISABLED*");
-
-    if (1 == 1 + 1)
+    if (strlen(message) > 7) // require 3 digits
     {
-        send_text_message_to_friend(tox, friend_number, "capture single shot, and send to all friends ...");
-        char output_str[1000];
-        run_cmd_return_output(shell_cmd__single_shot, output_str, 1);
-#if 0
+        send_text_message_to_friend(tox, friend_number, "setting global video bitrate ...");
 
-        if (strlen(output_str) > 0)
+       int vbr_new = get_number_in_string(message, (int)global_video_bit_rate);
+
+        if ((vbr_new >= DEFAULT_GLOBAL_MIN_VID_BITRATE) && (vbr_new <= DEFAULT_GLOBAL_MAX_VID_BITRATE))
         {
-            // send_text_message_to_friend(tox, friend_number, "toxcam:%s", output_str);
-        }
-        else
+            DEFAULT_GLOBAL_VID_BITRATE = (int32_t)vbr_new;
+            global_video_bit_rate = DEFAULT_GLOBAL_VID_BITRATE;
+
+            if (mytox_av != NULL)
+            {
+                toxav_bit_rate_set(mytox_av, friend_number, global_audio_bit_rate, global_video_bit_rate, NULL);
+        if (friend_to_send_video_to != -1)
         {
-            send_text_message_to_friend(tox, friend_number, "ERROR running snap command");
+                toxav_bit_rate_set(mytox_av, friend_to_send_video_to, global_audio_bit_rate, global_video_bit_rate, NULL);
         }
 
-#endif
-        send_text_message_to_friend(tox, friend_number, "... capture single shot, ready!");
+        dbg(9, "setting video bitrate to: %d\n", (int)global_video_bit_rate);
+        send_text_message_to_friend(tox, friend_number, "setting video bitrate to: %d", (int)global_video_bit_rate);
+            }
+        }
+    }
+}
+
+void cmd_fps(Tox *tox, uint32_t friend_number, char* message)
+{
+        send_text_message_to_friend(tox, friend_number, "setting video frame delay ...");
+
+   int num_new = get_number_in_string(message, (int)DEFAULT_FPS_SLEEP_MS);
+
+    if ((num_new >= 1) && (num_new <= 1000))
+    {
+        DEFAULT_FPS_SLEEP_MS = num_new;
+        dbg(9, "setting wait in ms: %d\n", (int)DEFAULT_FPS_SLEEP_MS);
+        send_text_message_to_friend(tox, friend_number, "setting wait in ms: %d\n", (int)DEFAULT_FPS_SLEEP_MS);
     }
 }
 
@@ -1891,23 +1926,13 @@ void send_help_to_friend(Tox *tox, uint32_t friend_number)
 {
     send_text_message_to_friend(tox, friend_number,
                                 "=========================\nToxCam version:%s\n=========================", global_version_string);
-    // send_text_message_to_friend(tox, friend_number, " commands are:");
     send_text_message_to_friend(tox, friend_number, " .stats    --> show ToxCam status");
     send_text_message_to_friend(tox, friend_number, " .friends  --> show ToxCam Friends");
-    send_text_message_to_friend(tox, friend_number, " .snap     --> snap a single still image");
     send_text_message_to_friend(tox, friend_number, " .restart  --> restart ToxCam system");
+    send_text_message_to_friend(tox, friend_number, " .vbr      --> set video bitrate");
+    send_text_message_to_friend(tox, friend_number, " .fps      --> set fps");
     send_text_message_to_friend(tox, friend_number, " .vcm      --> videocall me");
 }
-
-//void start_zipfile(mz_zip_archive *pZip, size_t size_pZip, const char* zip_file_full_path)
-//{
-//}
-//void add_file_to_zipfile(mz_zip_archive *pZip, const char* file_to_add_full_path, const char* filename_in_zipfile)
-//{
-//}
-//void finish_zipfile(mz_zip_archive *pZip)
-//{
-//}
 
 void friend_message_cb(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, const uint8_t *message,
                        size_t length, void *user_data)
@@ -1934,9 +1959,13 @@ void friend_message_cb(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, 
             {
                 cmd_friends(tox, friend_number);
             }
-            else if (strncmp((char *)message, ".snap", strlen((char *)".snap")) == 0)
+            else if (strncmp((char *)message, ".vbr ", strlen((char *)".vbr ")) == 0)
             {
-                cmd_snap(tox, friend_number);
+                cmd_vbr(tox, friend_number, (char *)message);
+            }
+            else if (strncmp((char *)message, ".fps ", strlen((char *)".fps ")) == 0)
+            {
+                cmd_fps(tox, friend_number, (char *)message);
             }
             else if (strncmp((char *)message, ".restart", strlen((char *)".restart")) == 0) // restart toxcam processes (no reboot)
             {
@@ -3095,6 +3124,11 @@ static void t_toxav_bit_rate_status_cb(ToxAV *av, uint32_t friend_number,
                                        uint32_t audio_bit_rate, uint32_t video_bit_rate,
                                        void *user_data)
 {
+    // HINT: ignore !! ------------
+    // HINT: ignore !! ------------
+    // HINT: ignore !! ------------
+    return;
+    
     dbg(0, "t_toxav_bit_rate_status_cb:001 video_bit_rate=%d\n", (int)video_bit_rate);
     dbg(0, "t_toxav_bit_rate_status_cb:001 audio_bit_rate=%d\n", (int)audio_bit_rate);
     TOXAV_ERR_BIT_RATE_SET error = 0;
