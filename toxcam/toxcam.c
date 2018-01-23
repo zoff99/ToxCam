@@ -1763,13 +1763,12 @@ void cmd_kamft(Tox *tox, uint32_t friend_number)
     kill_all_file_transfers_friend(tox, friend_number);
 }
 
-void cmd_vbr(Tox *tox, uint32_t friend_number, char* message)
+void cmd_vbr(Tox *tox, uint32_t friend_number, char *message)
 {
     if (strlen(message) > 7) // require 3 digits
     {
         send_text_message_to_friend(tox, friend_number, "setting global video bitrate ...");
-
-       int vbr_new = get_number_in_string(message, (int)global_video_bit_rate);
+        int vbr_new = get_number_in_string(message, (int)global_video_bit_rate);
 
         if ((vbr_new >= DEFAULT_GLOBAL_MIN_VID_BITRATE) && (vbr_new <= DEFAULT_GLOBAL_MAX_VID_BITRATE))
         {
@@ -1779,23 +1778,23 @@ void cmd_vbr(Tox *tox, uint32_t friend_number, char* message)
             if (mytox_av != NULL)
             {
                 toxav_bit_rate_set(mytox_av, friend_number, global_audio_bit_rate, global_video_bit_rate, NULL);
-        if (friend_to_send_video_to != -1)
-        {
-                toxav_bit_rate_set(mytox_av, friend_to_send_video_to, global_audio_bit_rate, global_video_bit_rate, NULL);
-        }
 
-        dbg(9, "setting video bitrate to: %d\n", (int)global_video_bit_rate);
-        send_text_message_to_friend(tox, friend_number, "setting video bitrate to: %d", (int)global_video_bit_rate);
+                if (friend_to_send_video_to != -1)
+                {
+                    toxav_bit_rate_set(mytox_av, friend_to_send_video_to, global_audio_bit_rate, global_video_bit_rate, NULL);
+                }
+
+                dbg(9, "setting video bitrate to: %d\n", (int)global_video_bit_rate);
+                send_text_message_to_friend(tox, friend_number, "setting video bitrate to: %d", (int)global_video_bit_rate);
             }
         }
     }
 }
 
-void cmd_fps(Tox *tox, uint32_t friend_number, char* message)
+void cmd_fps(Tox *tox, uint32_t friend_number, char *message)
 {
-        send_text_message_to_friend(tox, friend_number, "setting video frame delay ...");
-
-   int num_new = get_number_in_string(message, (int)DEFAULT_FPS_SLEEP_MS);
+    send_text_message_to_friend(tox, friend_number, "setting video frame delay ...");
+    int num_new = get_number_in_string(message, (int)DEFAULT_FPS_SLEEP_MS);
 
     if ((num_new >= 1) && (num_new <= 1000))
     {
@@ -3128,7 +3127,6 @@ static void t_toxav_bit_rate_status_cb(ToxAV *av, uint32_t friend_number,
     // HINT: ignore !! ------------
     // HINT: ignore !! ------------
     return;
-    
     dbg(0, "t_toxav_bit_rate_status_cb:001 video_bit_rate=%d\n", (int)video_bit_rate);
     dbg(0, "t_toxav_bit_rate_status_cb:001 audio_bit_rate=%d\n", (int)audio_bit_rate);
     TOXAV_ERR_BIT_RATE_SET error = 0;
@@ -3356,6 +3354,11 @@ void *thread_av(void *data)
                 {
                     left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, (1280 / 2) - (ding_box_small / 2) + 30,
                                                 200 + ((ding_box_normal - ding_box_small) / 2), ding_box_small, ding_box_small, 150, 150, 150);
+                }
+                else
+                {
+                    left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, (1280 / 2) - (ding_box_small / 2) + 30,
+                                                200 + ((ding_box_normal - ding_box_small) / 2), ding_box_small, ding_box_small, 0, 0, 0);
                 }
 
                 int start_y_pix = 450;
@@ -3752,9 +3755,13 @@ void set_color_in_yuv_frame_xy(uint8_t *yy, uint8_t *uu, uint8_t *vv, int px_x, 
 #define CLIP(X) ( (X) > 255 ? 255 : (X) < 0 ? 0 : X)
 
 // RGB -> YUV
-#define RGB2Y(R, G, B) CLIP(( (  66 * (R) + 129 * (G) +  25 * (B) + 128) >> 8) +  16)
-#define RGB2U(R, G, B) CLIP(( ( -38 * (R) -  74 * (G) + 112 * (B) + 128) >> 8) + 128)
-#define RGB2V(R, G, B) CLIP(( ( 112 * (R) -  94 * (G) -  18 * (B) + 128) >> 8) + 128)
+//#define RGB2Y(R, G, B) CLIP(( (  66 * (R) + 129 * (G) +  25 * (B) + 128) >> 8) +  16)
+//#define RGB2U(R, G, B) CLIP(( ( -38 * (R) -  74 * (G) + 112 * (B) + 128) >> 8) + 128)
+//#define RGB2V(R, G, B) CLIP(( ( 112 * (R) -  94 * (G) -  18 * (B) + 128) >> 8) + 128)
+
+#define RGB2Y(R, G, B) CLIP((  0.183 * (float)(R) + 0.614 * (float)(G) +  0.062 * (float)(B)) +  16)
+#define RGB2U(R, G, B) CLIP(( -0.101 * (float)(R) - 0.339 * (float)(G) +  0.439 * (float)(B)) + 128)
+#define RGB2V(R, G, B) CLIP((  0.439 * (float)(R) - 0.399 * (float)(G) -  0.040 * (float)(B)) + 128)
 
 // YUV -> RGB
 #define C(Y) ( (Y) - 16  )
