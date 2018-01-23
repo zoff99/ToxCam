@@ -73,8 +73,8 @@ static struct v4lconvert_data *v4lconvert_data;
 // ----------- version -----------
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 99
-#define VERSION_PATCH 12
-static const char global_version_string[] = "0.99.12";
+#define VERSION_PATCH 13
+static const char global_version_string[] = "0.99.13";
 // ----------- version -----------
 // ----------- version -----------
 
@@ -297,7 +297,7 @@ int toxav_iterate_thread_stop = 0;
 // -- hardcoded --
 // -- hardcoded --
 // -- hardcoded --
-uint32_t friend_to_send_video_to = -1;
+int32_t friend_to_send_video_to = -1;
 // -- hardcoded --
 // -- hardcoded --
 // -- hardcoded --
@@ -4121,10 +4121,10 @@ int main(int argc, char *argv[])
 	Tox *tox = create_tox();
 	global_start_time = time(NULL);
 
-    const char *name = "VideoTest";
+    const char *name = "AVSyncTest";
     tox_self_set_name(tox, (uint8_t *)name, strlen(name), NULL);
 
-    const char *status_message = "This is Tox VideoTest";
+    const char *status_message = "This is Tox AVSyncTest";
     tox_self_set_status_message(tox, (uint8_t *)status_message, strlen(status_message), NULL);
 
     Friends.max_idx = 0;
