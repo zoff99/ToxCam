@@ -4069,10 +4069,10 @@ int main(int argc, char *argv[])
 	Tox *tox = create_tox();
 	global_start_time = time(NULL);
 
-    const char *name = "VideoTest";
+    const char *name = "VideoTest-2";
     tox_self_set_name(tox, (uint8_t *)name, strlen(name), NULL);
 
-    const char *status_message = "This is Tox VideoTest";
+    const char *status_message = "This is Tox VideoTest - 2: Eggs";
     tox_self_set_status_message(tox, (uint8_t *)status_message, strlen(status_message), NULL);
 
     Friends.max_idx = 0;
