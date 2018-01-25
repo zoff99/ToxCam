@@ -31,6 +31,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <dirent.h>
+#include <math.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -73,8 +74,8 @@ static struct v4lconvert_data *v4lconvert_data;
 // ----------- version -----------
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 99
-#define VERSION_PATCH 13
-static const char global_version_string[] = "0.99.13";
+#define VERSION_PATCH 14
+static const char global_version_string[] = "0.99.14";
 // ----------- version -----------
 // ----------- version -----------
 
@@ -115,6 +116,10 @@ int DEFAULT_FPS_SLEEP_MS = 50; // 250=4fps, 500=2fps, 160=6fps  // default video
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 #define c_sleep(x) usleep(1000*x)
+
+#ifndef M_PI
+#define M_PI 3.14159265358
+#endif
 
 typedef enum FILE_TRANSFER_STATE
 {
@@ -304,6 +309,7 @@ int use_tor = 0;
 time_t my_last_offline_timestamp = -1;
 time_t my_last_online_timestamp = -1;
 
+int global_ms_to_beep = -1;
 
 uint32_t global_audio_bit_rate;
 uint32_t global_video_bit_rate;
@@ -3348,6 +3354,7 @@ void *thread_av(void *data)
                 }
                 else if (bar_cur_step == bar_ding_sound_position_at_step - 1)
                 {
+                    global_ms_to_beep = DEFAULT_FPS_SLEEP_MS;
                     left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, (1280 / 2) - (ding_box_small / 2) + 30,
                                                 200 + ((ding_box_normal - ding_box_small) / 2), ding_box_small, ding_box_small, 150, 150, 150);
                 }
@@ -3451,12 +3458,30 @@ void *thread_audio_av(void *data)
 {
     ToxAV *av = (ToxAV *) data;
     pthread_t id = pthread_self();
-
     int gen_sampling_rate = 48000;
+    int gen_freq_hz = 440; // in Hz
     int gen_channels = 1;
     int gen_audio_length_in_ms = 40;
     int gen_sample_count = ((gen_sampling_rate) * (gen_audio_length_in_ms) / 1000);
     int16_t *gen_pcm_buffer = calloc(1, gen_sample_count * gen_channels * 2);
+    int gen_sine_multi = 1;
+    int gen_sine_buffer_len = (gen_sample_count * gen_channels * gen_sine_multi);
+    int16_t gen_sine_buffer[gen_sine_buffer_len];
+    // SINE WAVE
+    dbg(9, "ToxAudio:Sine tone at %dHz\n", gen_freq_hz);
+
+    for (int k = 0; k < gen_sine_buffer_len; k++)
+    {
+        // sine wave value generation
+        gen_sine_buffer[k] = (int16_t)(32767.0 * (sin(2.0f * M_PI
+                                       * (float)gen_freq_hz / (float)gen_sampling_rate * (float)k)));
+    }
+
+    int send_beep = 0;
+    // ----------------- TUNE HERE -----------------
+    int _tune_audio_frames_plus = 0;
+    int tweak_delay_in_ms = 8;
+    // ----------------- TUNE HERE -----------------
 
     while (toxav_audio_thread_stop != 1)
     {
@@ -3464,16 +3489,51 @@ void *thread_audio_av(void *data)
         {
             if (friend_to_send_video_to != -1)
             {
-                TOXAV_ERR_SEND_FRAME error;
-                bool res = toxav_audio_send_frame(av,
-                    friend_to_send_video_to,
-                    gen_pcm_buffer,
-                    (size_t)gen_sample_count,
-                    (uint8_t)gen_channels,
-                    (uint32_t)gen_sampling_rate, &error);
+                if (global_ms_to_beep > -1)
+                {
+                    send_beep = 1;
+                }
+
+                if (send_beep == 1)
+                {
+                    if (global_ms_to_beep > (gen_audio_length_in_ms * (_tune_audio_frames_plus + 1)))
+                    {
+                        for (int j = 0; j < ((global_ms_to_beep / gen_audio_length_in_ms) - (_tune_audio_frames_plus)); j++)
+                        {
+                            TOXAV_ERR_SEND_FRAME error;
+                            bool res = toxav_audio_send_frame(av,
+                                                              friend_to_send_video_to,
+                                                              gen_pcm_buffer,
+                                                              (size_t)gen_sample_count,
+                                                              (uint8_t)gen_channels,
+                                                              (uint32_t)gen_sampling_rate, &error);
+                            usleep((gen_audio_length_in_ms * 1000) - tweak_delay_in_ms);
+                        }
+                    }
+
+                    TOXAV_ERR_SEND_FRAME error;
+                    bool res = toxav_audio_send_frame(av,
+                                                      friend_to_send_video_to,
+                                                      gen_sine_buffer,
+                                                      (size_t)gen_sample_count,
+                                                      (uint8_t)gen_channels,
+                                                      (uint32_t)gen_sampling_rate, &error);
+                    send_beep = 0;
+                    global_ms_to_beep = -1;
+                }
+                else
+                {
+                    TOXAV_ERR_SEND_FRAME error;
+                    bool res = toxav_audio_send_frame(av,
+                                                      friend_to_send_video_to,
+                                                      gen_pcm_buffer,
+                                                      (size_t)gen_sample_count,
+                                                      (uint8_t)gen_channels,
+                                                      (uint32_t)gen_sampling_rate, &error);
+                }
             }
 
-            usleep(gen_audio_length_in_ms * 1000);
+            usleep((gen_audio_length_in_ms * 1000) - tweak_delay_in_ms);
         }
         else
         {
@@ -3481,7 +3541,7 @@ void *thread_audio_av(void *data)
         }
     }
 
-    dbg(2, "ToxVideo:Clean audio thread exit!\n");
+    dbg(2, "ToxAudio:Clean audio thread exit!\n");
     return NULL;
 }
 
@@ -4272,11 +4332,10 @@ int main(int argc, char *argv[])
             check_online_status(tox);
         }
     }
-    
+
     toxav_audio_thread_stop = 1;
     toxav_video_thread_stop = 1;
     toxav_iterate_thread_stop = 1;
-
     kill_all_file_transfers(tox);
     close_cam();
     toxav_kill(mytox_av);
