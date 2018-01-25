@@ -313,6 +313,7 @@ int global_blink_state = 0;
 
 int toxav_video_thread_stop = 0;
 int toxav_iterate_thread_stop = 0;
+int toxav_audio_thread_stop = 0;
 
 // -- hardcoded --
 // -- hardcoded --
@@ -3446,6 +3447,43 @@ void *thread_av(void *data)
     return NULL;
 }
 
+void *thread_audio_av(void *data)
+{
+    ToxAV *av = (ToxAV *) data;
+    pthread_t id = pthread_self();
+
+    int gen_sampling_rate = 48000;
+    int gen_channels = 1;
+    int gen_audio_length_in_ms = 40;
+    int gen_sample_count = ((gen_sampling_rate) * (gen_audio_length_in_ms) / 1000);
+    int16_t *gen_pcm_buffer = calloc(1, gen_sample_count * gen_channels * 2);
+
+    while (toxav_audio_thread_stop != 1)
+    {
+        if (global_video_active == 1)
+        {
+            if (friend_to_send_video_to != -1)
+            {
+                TOXAV_ERR_SEND_FRAME error;
+                bool res = toxav_audio_send_frame(av,
+                    friend_to_send_video_to,
+                    gen_pcm_buffer,
+                    (size_t)gen_sample_count,
+                    (uint8_t)gen_channels,
+                    (uint32_t)gen_sampling_rate, &error);
+            }
+
+            usleep(gen_audio_length_in_ms * 1000);
+        }
+        else
+        {
+            yieldcpu(100);
+        }
+    }
+
+    dbg(2, "ToxVideo:Clean audio thread exit!\n");
+    return NULL;
+}
 
 void *thread_video_av(void *data)
 {
@@ -4173,7 +4211,7 @@ int main(int argc, char *argv[])
     toxav_callback_audio_receive_frame(mytox_av, t_toxav_receive_audio_frame_cb, &mytox_CC);
     // init AV callbacks -------------------------------
     // start toxav thread ------------------------------
-    pthread_t tid[2]; // 0 -> toxav_iterate thread, 1 -> video send thread
+    pthread_t tid[3]; // 0 -> toxav_iterate thread, 1 -> video send thread, 2 -> audio send thread
     // start toxav thread ------------------------------
     toxav_iterate_thread_stop = 0;
 
@@ -4195,6 +4233,17 @@ int main(int argc, char *argv[])
     else
     {
         dbg(2, "AV video Thread successfully created");
+    }
+
+    toxav_audio_thread_stop = 0;
+
+    if (pthread_create(&(tid[2]), NULL, thread_audio_av, (void *)mytox_av) != 0)
+    {
+        dbg(0, "AV audio Thread create failed");
+    }
+    else
+    {
+        dbg(2, "AV audio Thread successfully created");
     }
 
     // start toxav thread ------------------------------
@@ -4223,6 +4272,10 @@ int main(int argc, char *argv[])
             check_online_status(tox);
         }
     }
+    
+    toxav_audio_thread_stop = 1;
+    toxav_video_thread_stop = 1;
+    toxav_iterate_thread_stop = 1;
 
     kill_all_file_transfers(tox);
     close_cam();
