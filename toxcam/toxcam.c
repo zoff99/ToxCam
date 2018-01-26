@@ -3252,18 +3252,6 @@ void set_av_video_frame()
 }
 
 
-void read_yuf_file(const char *yuf_frame_file, uint8_t *buffer, size_t max_length)
-{
-    FILE *fileptr;
-    long filelen;
-    fileptr = fopen(yuf_frame_file, "rb");
-    fseek(fileptr, 0, SEEK_END);
-    filelen = ftell(fileptr);
-    rewind(fileptr);
-    int res = fread(buffer, max_length, 1, fileptr);
-    fclose(fileptr);
-}
-
 
 void *thread_av(void *data)
 {
@@ -3291,27 +3279,32 @@ void *thread_av(void *data)
         v4l_startread();
     }
 
-    int fix_frame_num = 1;
-    // -- load base video frame --
+
+    // ----------------- TUNE HERE -----------------
+    char input_video_file[] = "./video.vid";
     int ww = 1280;
     int hh = 720;
+    float fps = 24;
+    // ----------------- TUNE HERE -----------------
+
+    DEFAULT_FPS_SLEEP_MS = (int)(1000.0 / fps);
     uint8_t *yy;
     uint8_t *uu;
     uint8_t *vv;
     yy = calloc(1, (size_t)((ww * hh) * 1.5)); // 3110400.0 Bytes per 1080 frame
+    int frame_size_in_bytes = (ww * hh) * 1.5;
     uu = yy + (ww * hh);
     vv = uu + ((ww / 2) * (hh / 2));
-    // memset(yy, 130, (size_t)(ww * hh)); // set Y plane to grey-ish
-    char yuf_frame_file[300] = "base_image_1280_720.yuv";
-    read_yuf_file(yuf_frame_file, yy, (size_t)((ww * hh) * 1.5));
-    // -- load base video frame --
-    int bar_min_position = 41;
-    int bar_max_position = 1231 + 41;
-    int bar_steps = 24;
-    float bar_increment = ((float)bar_max_position - (float)bar_min_position) / (float)bar_steps;
-    int bar_ding_sound_position_at_step = 13;
-    float bar_cur_positon = bar_min_position;
-    int bar_cur_step = 1;
+
+    int read_bytes = 0;
+    char cmd[1000];
+    CLEAR(cmd);
+    snprintf(cmd, sizeof(cmd),
+        "ffmpeg -i %s -f image2pipe -vcodec rawvideo -pix_fmt %s -",
+        input_video_file, "yuv420p");
+
+    // Open an input pipe from ffmpeg
+    FILE *pipein = popen(cmd, "r");
 
     while (toxav_iterate_thread_stop != 1)
     {
@@ -3326,102 +3319,52 @@ void *thread_av(void *data)
             {
                 if (global_send_first_frame > 0)
                 {
-                    // black_yuf_frame_xy();
                     global_send_first_frame--;
                 }
 
-                // "0" -> [48]
-                // "9" -> [57]
-                // ":" -> [58]
-                char *date_time_str = get_current_time_date_formatted();
-
-                if (date_time_str)
-                {
-                    text_on_yuf_frame_xy(yy, uu, vv, ww, hh, 10, 10, date_time_str);
-                    free(date_time_str);
-                }
-
-                blinking_dot_on_frame_xy(yy, uu, vv, ww, hh, 20, 30, 30, 30, &global_blink_state);
-                int ding_box_small = 40;
-                int ding_box_normal = 80;
-                left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, (1280 / 2) - (ding_box_normal / 2) + 30,
-                                            200, ding_box_normal, ding_box_normal, 0, 0, 0);
-
-                if (bar_cur_step == bar_ding_sound_position_at_step)
-                {
-                    left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, (1280 / 2) - (ding_box_normal / 2) + 30,
-                                                200, ding_box_normal, ding_box_normal, 255, 255, 0);
-                }
-                else if (bar_cur_step == bar_ding_sound_position_at_step - 1)
-                {
-                    global_ms_to_beep = DEFAULT_FPS_SLEEP_MS;
-                    left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, (1280 / 2) - (ding_box_small / 2) + 30,
-                                                200 + ((ding_box_normal - ding_box_small) / 2), ding_box_small, ding_box_small, 150, 150, 150);
-                }
-                else if (bar_cur_step == bar_ding_sound_position_at_step + 1)
-                {
-                    left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, (1280 / 2) - (ding_box_small / 2) + 30,
-                                                200 + ((ding_box_normal - ding_box_small) / 2), ding_box_small, ding_box_small, 150, 150, 150);
-                }
-                else
-                {
-                    left_top_bar_into_yuv_frame(yy, uu, vv, ww, hh, (1280 / 2) - (ding_box_small / 2) + 30,
-                                                200 + ((ding_box_normal - ding_box_small) / 2), ding_box_small, ding_box_small, 0, 0, 0);
-                }
-
-                int start_y_pix = 450;
-                int bar_height_px = 100;
-
-                if (bar_cur_step == 1)
-                {
-                    left_top_bar_into_yuv_frame(yy, uu, vv, 1280, 720, bar_min_position, start_y_pix,
-                                                bar_max_position,
-                                                bar_height_px, 0, 0, 0);
-                }
-
-                left_top_bar_into_yuv_frame(yy, uu, vv, 1280, 720, bar_min_position, start_y_pix,
-                                            bar_cur_positon - bar_min_position,
-                                            bar_height_px, 255, 255, 255);
-
                 if (friend_to_send_video_to != -1)
                 {
-                    // dbg(9, "AV Thread #%d:send frame to friend num=%d\n", (int) id, (int)friend_to_send_video_to);
-                    TOXAV_ERR_SEND_FRAME error = 0;
-                    toxav_video_send_frame(av, friend_to_send_video_to, ww, hh,
-                                           yy, uu, vv, &error);
-                    bar_cur_positon = bar_cur_positon + bar_increment;
-                    bar_cur_step++;
+                    read_bytes = fread(yy, 1, frame_size_in_bytes, pipein);
 
-                    if (bar_cur_step > bar_steps)
+                    if (count != frame_size_in_bytes)
                     {
-                        bar_cur_positon = bar_min_position;
-                        bar_cur_step = 1;
+                        pclose(pipein);
+                        FILE *pipein = popen(cmd, "r");
                     }
 
-                    if (error)
-                    {
-                        if (error == TOXAV_ERR_SEND_FRAME_SYNC)
+                        // dbg(9, "AV Thread #%d:send frame to friend num=%d\n", (int) id, (int)friend_to_send_video_to);
+                        TOXAV_ERR_SEND_FRAME error = 0;
+                        toxav_video_send_frame(av, friend_to_send_video_to, ww, hh,
+                                               yy, uu, vv, &error);
+                                               
+
+                        if (error)
                         {
-                            //debug_notice("uToxVideo:\tVid Frame sync error: w=%u h=%u\n", av_video_frame.w,
-                            //           av_video_frame.h);
-                            dbg(0, "TOXAV_ERR_SEND_FRAME_SYNC\n");
+                            if (error == TOXAV_ERR_SEND_FRAME_SYNC)
+                            {
+                                //debug_notice("uToxVideo:\tVid Frame sync error: w=%u h=%u\n", av_video_frame.w,
+                                //           av_video_frame.h);
+                                dbg(0, "TOXAV_ERR_SEND_FRAME_SYNC\n");
+                            }
+                            else if (error == TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED)
+                            {
+                                //debug_error("uToxVideo:\tToxAV disagrees with our AV state for friend %lu, self %u, friend %u\n",
+                                //  i, friend[i].call_state_self, friend[i].call_state_friend);
+                                dbg(0, "TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED\n");
+                            }
+                            else
+                            {
+                                //debug_error("uToxVideo:\ttoxav_send_video error friend: %i error: %u\n",
+                                //          friend[i].number, error);
+                                dbg(0, "ToxVideo:toxav_send_video error %u\n", error);
+                                // *TODO* if these keep piling up --> just disconnect the call!!
+                                // *TODO* if these keep piling up --> just disconnect the call!!
+                                // *TODO* if these keep piling up --> just disconnect the call!!
+                            }
                         }
-                        else if (error == TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED)
-                        {
-                            //debug_error("uToxVideo:\tToxAV disagrees with our AV state for friend %lu, self %u, friend %u\n",
-                            //  i, friend[i].call_state_self, friend[i].call_state_friend);
-                            dbg(0, "TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED\n");
-                        }
-                        else
-                        {
-                            //debug_error("uToxVideo:\ttoxav_send_video error friend: %i error: %u\n",
-                            //          friend[i].number, error);
-                            dbg(0, "ToxVideo:toxav_send_video error %u\n", error);
-                            // *TODO* if these keep piling up --> just disconnect the call!!
-                            // *TODO* if these keep piling up --> just disconnect the call!!
-                            // *TODO* if these keep piling up --> just disconnect the call!!
-                        }
-                    }
+                    
+    
+
                 }
             }
             else if (r == -1)
@@ -3443,6 +3386,9 @@ void *thread_av(void *data)
     }
 
     free(yy);
+
+    fflush(pipein);
+    pclose(pipein);
 
     if (video_call_enabled == 1)
     {
@@ -3489,40 +3435,6 @@ void *thread_audio_av(void *data)
         {
             if (friend_to_send_video_to != -1)
             {
-                if (global_ms_to_beep > -1)
-                {
-                    send_beep = 1;
-                }
-
-                if (send_beep == 1)
-                {
-                    if (global_ms_to_beep > (gen_audio_length_in_ms * (_tune_audio_frames_plus + 1)))
-                    {
-                        for (int j = 0; j < ((global_ms_to_beep / gen_audio_length_in_ms) - (_tune_audio_frames_plus)); j++)
-                        {
-                            TOXAV_ERR_SEND_FRAME error;
-                            bool res = toxav_audio_send_frame(av,
-                                                              friend_to_send_video_to,
-                                                              gen_pcm_buffer,
-                                                              (size_t)gen_sample_count,
-                                                              (uint8_t)gen_channels,
-                                                              (uint32_t)gen_sampling_rate, &error);
-                            usleep((gen_audio_length_in_ms * 1000) - tweak_delay_in_ms);
-                        }
-                    }
-
-                    TOXAV_ERR_SEND_FRAME error;
-                    bool res = toxav_audio_send_frame(av,
-                                                      friend_to_send_video_to,
-                                                      gen_sine_buffer,
-                                                      (size_t)gen_sample_count,
-                                                      (uint8_t)gen_channels,
-                                                      (uint32_t)gen_sampling_rate, &error);
-                    send_beep = 0;
-                    global_ms_to_beep = -1;
-                }
-                else
-                {
                     TOXAV_ERR_SEND_FRAME error;
                     bool res = toxav_audio_send_frame(av,
                                                       friend_to_send_video_to,
@@ -3530,7 +3442,6 @@ void *thread_audio_av(void *data)
                                                       (size_t)gen_sample_count,
                                                       (uint8_t)gen_channels,
                                                       (uint32_t)gen_sampling_rate, &error);
-                }
             }
 
             usleep((gen_audio_length_in_ms * 1000) - tweak_delay_in_ms);
@@ -4198,9 +4109,9 @@ int main(int argc, char *argv[])
 
     Tox *tox = create_tox();
     global_start_time = time(NULL);
-    const char *name = "AVSyncTest";
+    const char *name = "AVStreamTest";
     tox_self_set_name(tox, (uint8_t *)name, strlen(name), NULL);
-    const char *status_message = "This is Tox AVSyncTest";
+    const char *status_message = "This is Tox AVStreamTest";
     tox_self_set_status_message(tox, (uint8_t *)status_message, strlen(status_message), NULL);
     Friends.max_idx = 0;
     bootstrap(tox);
