@@ -539,6 +539,25 @@ time_t get_unix_time(void)
     return time(NULL);
 }
 
+static inline void __utimer_start(struct timeval *tm1)
+{
+    gettimeofday(tm1, NULL);
+}
+
+static inline unsigned long long __utimer_stop(struct timeval *tm1, const char *log_msg, int no_log)
+{
+    struct timeval tm2;
+    gettimeofday(&tm2, NULL);
+    unsigned long long t = 1000 * (tm2.tv_sec - tm1->tv_sec) + (tm2.tv_usec - tm1->tv_usec) / 1000;
+
+    if (no_log == 0)
+    {
+        dbg(9, "%s %llu ms\n", log_msg, t);
+    }
+
+    return t;
+}
+
 void yieldcpu(uint32_t ms)
 {
     usleep(1000 * ms);
@@ -3372,6 +3391,9 @@ void *thread_av(void *data)
     int input_video_ts_pipe_fd = open(input_video_ts_pipe, O_RDONLY | O_NONBLOCK);
     int num_scan_values = 0;
     long int pts = 0;
+    long long timspan_in_ms = 99999;
+    static struct timeval tm_outgoing_video_frames;
+    int new_sleep = DEFAULT_FPS_SLEEP_MS;
 
     while (toxav_iterate_thread_stop != 1)
     {
@@ -3448,7 +3470,27 @@ void *thread_av(void *data)
             }
 
             pthread_mutex_unlock(&av_thread_lock);
-            yieldcpu(DEFAULT_FPS_SLEEP_MS); /* ~nn frames per second */
+
+            if (timspan_in_ms != 99999)
+            {
+                timspan_in_ms = __utimer_stop(&tm_outgoing_video_frames, "sending video frame every:", 1);
+                if (timspan_in_ms > DEFAULT_FPS_SLEEP_MS)
+                {
+                    new_sleep = 2;
+                }
+                else
+                {
+                    new_sleep = DEFAULT_FPS_SLEEP_MS - timspan_in_ms;
+                }
+            }
+            else
+            {
+                new_sleep = DEFAULT_FPS_SLEEP_MS;
+            }
+
+            __utimer_start(&tm_outgoing_video_frames);
+
+             yieldcpu(new_sleep); /* ~nn frames per second */
         }
         else
         {
