@@ -3394,6 +3394,7 @@ void *thread_av(void *data)
     long long timspan_in_ms = 99999;
     static struct timeval tm_outgoing_video_frames;
     int new_sleep = DEFAULT_FPS_SLEEP_MS;
+    int last_sleep = DEFAULT_FPS_SLEEP_MS;
 
     while (toxav_iterate_thread_stop != 1)
     {
@@ -3473,24 +3474,40 @@ void *thread_av(void *data)
 
             if (timspan_in_ms != 99999)
             {
-                timspan_in_ms = __utimer_stop(&tm_outgoing_video_frames, "sending video frame every:", 1);
+                timspan_in_ms = __utimer_stop(&tm_outgoing_video_frames, "_", 1);
                 if (timspan_in_ms > DEFAULT_FPS_SLEEP_MS)
                 {
-                    new_sleep = 2;
+                    // dbg(9, "(1)def=%d actual=%d\n", DEFAULT_FPS_SLEEP_MS, timspan_in_ms);
+                    if (last_sleep > 2)
+                    {
+                        new_sleep = last_sleep - (timspan_in_ms - DEFAULT_FPS_SLEEP_MS);
+                        if (new_sleep < 2)
+                        {
+                            new_sleep = 2;
+                        }
+                    }
+                    else
+                    {
+                        new_sleep = 2;
+                    }
                 }
                 else
                 {
-                    new_sleep = DEFAULT_FPS_SLEEP_MS - timspan_in_ms;
+                    new_sleep = last_sleep + (DEFAULT_FPS_SLEEP_MS - timspan_in_ms);
+                    //dbg(9, "(2)new=%d last=%d def=%d actual=%d\n",
+                    //    new_sleep, last_sleep, DEFAULT_FPS_SLEEP_MS, timspan_in_ms);
                 }
             }
             else
             {
+                timspan_in_ms = __utimer_stop(&tm_outgoing_video_frames, "_", 1);
                 new_sleep = DEFAULT_FPS_SLEEP_MS;
             }
 
             __utimer_start(&tm_outgoing_video_frames);
 
              yieldcpu(new_sleep); /* ~nn frames per second */
+             last_sleep = new_sleep;
         }
         else
         {
