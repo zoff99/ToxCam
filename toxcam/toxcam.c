@@ -4440,7 +4440,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    // ** // cpu_cores = get_nprocs();
+    cpu_cores = get_nprocs();
     dbg(9, "detected %d processors\n", cpu_cores);
     Tox *tox = create_tox();
     global_start_time = time(NULL);
