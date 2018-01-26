@@ -3786,6 +3786,15 @@ void *thread_audio_av(void *data)
     pclose(pipein);
     // close(input_audio_ts_pipe_fd);
     // unlink(input_audio_ts_pipe);
+
+    uint32_t dummy1;
+    uint32_t dummy2;
+    int16_t *dummy_buf= NULL;
+    while (bw_rb_read(pcm_rb, &dummy_buf, &dummy1, &dummy2))
+    {
+        free(dummy_buf);
+    }
+
     dbg(2, "ToxAudio:Clean audio thread exit!\n");
     return NULL;
 }
