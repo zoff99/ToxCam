@@ -3621,7 +3621,7 @@ void *thread_audio_send_av(void *data)
                         }
 
                         __utimer_start(&tm_outgoing_audio_frames);
-                        yieldcpu(new_sleep);
+                        usleep((new_sleep * 1000) - 800);
                         // dbg(9, "Audio: sleep=%d\n", new_sleep);
                         last_sleep = new_sleep;
                         // ------- sleep delay autotune -------
