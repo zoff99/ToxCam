@@ -3284,7 +3284,7 @@ void *thread_av(void *data)
     char input_video_file[] = "./video.vid";
     int ww = 1280;
     int hh = 720;
-    float fps = 42; // this is not exact!!
+    float fps = 70; // this is not exact, sorry!!
     int chars_for_ffmpeg_showinfo = 244;
     // ----------------- TUNE HERE -----------------
 
@@ -3477,6 +3477,8 @@ void *thread_audio_av(void *data)
             yieldcpu(100);
         }
     }
+
+    pclose(pipein);
 
     dbg(2, "ToxAudio:Clean audio thread exit!\n");
     return NULL;
