@@ -3303,14 +3303,20 @@ void *thread_av(void *data)
     int read_bytes = 0;
     char cmd[1000];
     CLEAR(cmd);
+#if 1
+    snprintf(cmd, sizeof(cmd),
+             "ffmpeg -y -hide_banner -nostats -i %s -threads %d -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s pipe:1 2> %s",
+             input_video_file, cpu_cores, "yuv420p", input_video_ts_pipe);
+#else
     snprintf(cmd, sizeof(cmd),
              "ffmpeg -y -hide_banner -nostats -i %s -threads %d -vf showinfo -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s pipe:1 2> %s",
              input_video_file, cpu_cores, "yuv420p", input_video_ts_pipe);
+#endif
     // Open an input pipe from ffmpeg
     FILE *pipein = popen(cmd, "r");
-    int input_video_ts_pipe_fd = open(input_video_ts_pipe, O_RDONLY);
+    int input_video_ts_pipe_fd = open(input_video_ts_pipe, O_RDONLY | O_NONBLOCK);
     int num_scan_values = 0;
-    long pts = 0;
+    long int pts = 0;
 
     while (toxav_iterate_thread_stop != 1)
     {
@@ -3331,18 +3337,19 @@ void *thread_av(void *data)
                 if (friend_to_send_video_to != -1)
                 {
                     read_bytes = fread(yy, 1, frame_size_in_bytes, pipein);
-                    read(input_video_ts_pipe_fd, pts_buffer, 1000);
-                    num_scan_values = sscanf(pts_buffer, " pos:%ld ", &pts);
-                    dbg(9, "Video:PTS=%ld\n", pts);
+
+                    // read(input_video_ts_pipe_fd, pts_buffer, 1000);
+                    // dbg(9, "VIDEO:RD:005:%s\n++++\n", pts_buffer);
 
                     if (read_bytes != frame_size_in_bytes)
                     {
                         pclose(pipein);
-                        close(input_video_ts_pipe);
+                        close(input_video_ts_pipe_fd);
                         unlink(input_video_ts_pipe);
                         mkfifo(input_video_ts_pipe, 0666);
+                        CLEAR(pts_buffer);
                         FILE *pipein = popen(cmd, "r");
-                        input_video_ts_pipe_fd = open(input_video_ts_pipe, O_RDONLY);
+                        input_video_ts_pipe_fd = open(input_video_ts_pipe, O_RDONLY | O_NONBLOCK);
                     }
 
                     // dbg(9, "AV Thread #%d:send frame to friend num=%d\n", (int) id, (int)friend_to_send_video_to);
@@ -3397,7 +3404,7 @@ void *thread_av(void *data)
     free(yy);
     fflush(pipein);
     pclose(pipein);
-    close(input_video_ts_pipe);
+    close(input_video_ts_pipe_fd);
     unlink(input_video_ts_pipe);
 
     if (video_call_enabled == 1)
@@ -3447,14 +3454,20 @@ void *thread_audio_av(void *data)
     int read_bytes = 0;
     char cmd[1000];
     CLEAR(cmd);
+#if 1
     snprintf(cmd, sizeof(cmd),
-             "ffmpeg -y -hide_banner -nostats -i %s -threads %d -af ashowinfo -an -sn -acodec pcm_s16le -f s16le -ac %d -ar %d pipe:1 2> %s",
+             "ffmpeg -y -hide_banner -nostats -i %s -threads %d -acodec pcm_s16le -f s16le -ac %d -ar %d pipe:1 2> %s",
              input_video_file, cpu_cores, gen_channels, gen_sampling_rate, input_audio_ts_pipe);
+#else
+    snprintf(cmd, sizeof(cmd),
+             "ffmpeg -y -hide_banner -nostats -i %s -threads %d -af ashowinfo -acodec pcm_s16le -f s16le -ac %d -ar %d pipe:1 2> %s",
+             input_video_file, cpu_cores, gen_channels, gen_sampling_rate, input_audio_ts_pipe);
+#endif
     // Open an input pipe from ffmpeg
     FILE *pipein = popen(cmd, "r");
-    int input_audio_ts_pipe_fd = open(input_audio_ts_pipe, O_RDONLY);
+    int input_audio_ts_pipe_fd = open(input_audio_ts_pipe, O_RDONLY | O_NONBLOCK);
     int num_scan_values = 0;
-    long pts = 0;
+    long int pts = 0;
 
     while (toxav_audio_thread_stop != 1)
     {
@@ -3463,17 +3476,18 @@ void *thread_audio_av(void *data)
             if (friend_to_send_video_to != -1)
             {
                 read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
-                read(input_audio_ts_pipe_fd, pts_buffer, 1000);
-                num_scan_values = sscanf(pts_buffer, " pos:%ld ", &pts);
-                dbg(9, "Audio:PTS=%ld\n", pts);
+                // read(input_audio_ts_pipe_fd, pts_buffer, 1000);
+                // num_scan_values = sscanf(pts_buffer, "pos:%ld", &pts);
+                // dbg(9, "Audio:PTS=%s\n", pts_buffer);
 
                 if (read_bytes != pcm_buffer_size)
                 {
                     pclose(pipein);
+                    close(input_audio_ts_pipe_fd);
                     unlink(input_audio_ts_pipe);
                     mkfifo(input_audio_ts_pipe, 0666);
                     FILE *pipein = popen(cmd, "r");
-                    input_audio_ts_pipe_fd = open(input_audio_ts_pipe, O_RDONLY);
+                    input_audio_ts_pipe_fd = open(input_audio_ts_pipe, O_RDONLY | O_NONBLOCK);
                     read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
                 }
 
@@ -3495,6 +3509,7 @@ void *thread_audio_av(void *data)
     }
 
     pclose(pipein);
+    close(input_audio_ts_pipe_fd);
     unlink(input_audio_ts_pipe);
     dbg(2, "ToxAudio:Clean audio thread exit!\n");
     return NULL;
@@ -4151,7 +4166,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    cpu_cores = get_nprocs();
+    // ** // cpu_cores = get_nprocs();
     dbg(9, "detected %d processors\n", cpu_cores);
     Tox *tox = create_tox();
     global_start_time = time(NULL);
@@ -4234,33 +4249,33 @@ int main(int argc, char *argv[])
 
     if (pthread_create(&(tid[0]), NULL, thread_av, (void *)mytox_av) != 0)
     {
-        dbg(0, "AV iterate Thread create failed");
+        dbg(0, "AV iterate Thread create failed\n");
     }
     else
     {
-        dbg(2, "AV iterate Thread successfully created");
+        dbg(2, "AV iterate Thread successfully created\n");
     }
 
     toxav_video_thread_stop = 0;
 
     if (pthread_create(&(tid[1]), NULL, thread_video_av, (void *)mytox_av) != 0)
     {
-        dbg(0, "AV video Thread create failed");
+        dbg(0, "AV video Thread create failed\n");
     }
     else
     {
-        dbg(2, "AV video Thread successfully created");
+        dbg(2, "AV video Thread successfully created\n");
     }
 
     toxav_audio_thread_stop = 0;
 
     if (pthread_create(&(tid[2]), NULL, thread_audio_av, (void *)mytox_av) != 0)
     {
-        dbg(0, "AV audio Thread create failed");
+        dbg(0, "AV audio Thread create failed\n");
     }
     else
     {
-        dbg(2, "AV audio Thread successfully created");
+        dbg(2, "AV audio Thread successfully created\n");
     }
 
     // start toxav thread ------------------------------
