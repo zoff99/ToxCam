@@ -3326,7 +3326,7 @@ void *thread_av(void *data)
                 {
                     read_bytes = fread(yy, 1, frame_size_in_bytes, pipein);
 
-                    if (count != frame_size_in_bytes)
+                    if (read_bytes != frame_size_in_bytes)
                     {
                         pclose(pipein);
                         FILE *pipein = popen(cmd, "r");
