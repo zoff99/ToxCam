@@ -561,6 +561,24 @@ int get_number_in_string(const char *str, int default_value)
     return default_value;
 }
 
+int get_number_in_string_nonnull(const char *str, int default_value)
+{
+    int number;
+
+    while (!(*str >= '1' && *str <= '9') && (*str != '-') && (*str != '+'))
+    {
+        str++;
+    }
+
+    if (sscanf(str, "%d", &number) == 1)
+    {
+        return number;
+    }
+
+    // no int found, return default value
+    return default_value;
+}
+
 void tox_log_cb__custom(Tox *tox, TOX_LOG_LEVEL level, const char *file, uint32_t line, const char *func,
                         const char *message, void *user_data)
 {
@@ -3284,10 +3302,40 @@ void *thread_av(void *data)
 
     // ----------------- TUNE HERE -----------------
     char input_video_file[] = "./video.vid";
-    int ww = 1280;
-    int hh = 720;
+    int ww = 1280; // this will be autodetected
+    int hh = 720; // this will be autodetected
     float fps = 70; // this is not exact, sorry!!
     // ----------------- TUNE HERE -----------------
+    
+    
+    char cmd[1000];
+    char output_str[1000];
+
+    CLEAR(cmd);
+    snprintf(cmd, sizeof(cmd),
+             "ffprobe -v error -of flat=s=_ -select_streams v:0 -show_entries stream=width %s",
+             input_video_file);
+    CLEAR(output_str);
+    run_cmd_return_output(cmd, output_str, 1);
+    dbg(9, "Video:res=%s\n", output_str);
+    if (strlen(output_str) > 0)
+    {
+        ww = get_number_in_string_nonnull(output_str, ww);
+    }
+    CLEAR(cmd);
+    snprintf(cmd, sizeof(cmd),
+             "ffprobe -v error -of flat=s=_ -select_streams v:0 -show_entries stream=height %s",
+             input_video_file);
+    CLEAR(output_str);
+    run_cmd_return_output(cmd, output_str, 1);
+    dbg(9, "Video:res=%s\n", output_str);
+    if (strlen(output_str) > 0)
+    {
+        hh = get_number_in_string_nonnull(output_str, hh);
+    }
+    
+    dbg(9, "Video:width=%d height=%d\n", ww, hh);
+
     char input_video_ts_pipe[] = "./v_ts.pipe";
     DEFAULT_FPS_SLEEP_MS = (int)(1000.0 / fps);
     uint8_t *yy;
@@ -3301,7 +3349,6 @@ void *thread_av(void *data)
     unlink(input_video_ts_pipe);
     mkfifo(input_video_ts_pipe, 0666);
     int read_bytes = 0;
-    char cmd[1000];
     CLEAR(cmd);
 #if 1
     snprintf(cmd, sizeof(cmd),
