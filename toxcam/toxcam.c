@@ -3426,17 +3426,18 @@ void *thread_av(void *data)
                     // read(input_video_ts_pipe_fd, pts_buffer, 1000);
                     // dbg(9, "VIDEO:RD:005:%s\n++++\n", pts_buffer);
 
-                    if (read_bytes != frame_size_in_bytes)
+                    if (read_bytes == 0)
                     {
-                        dbg(9, "VIDEO:CL:001\n");
-                        pclose(pipein);
-                        dbg(9, "VIDEO:CL:002\n");
+                        dbg(9, "VIDEO:CL:001 pipein=%p\n", pipein);
+                        fflush(pipein);
+                        int res_ = pclose(pipein);
+                        dbg(9, "VIDEO:CL:002 res_=%d errno=%d\n", res_, (int)errno);
                         // close(input_video_ts_pipe_fd);
                         // unlink(input_video_ts_pipe);
                         // mkfifo(input_video_ts_pipe, 0666);
                         // CLEAR(pts_buffer);
-                        FILE *pipein = popen(cmd, "r");
-                        dbg(9, "VIDEO:CL:003\n");
+                        pipein = popen(cmd, "r");
+                        dbg(9, "VIDEO:CL:003 pipein=%p\n", pipein);
                         // input_video_ts_pipe_fd = open(input_video_ts_pipe, O_RDONLY | O_NONBLOCK);
                         read_bytes = fread(yy, 1, frame_size_in_bytes, pipein);
                         dbg(9, "VIDEO:CL:004\n");
@@ -3523,7 +3524,7 @@ void *thread_av(void *data)
             }
 
             __utimer_start(&tm_outgoing_video_frames);
-            yieldcpu(new_sleep); /* ~nn frames per second */
+            yieldcpu(new_sleep + 2); /* +2ms tweak */
             last_sleep = new_sleep;
         }
         else
@@ -3732,21 +3733,20 @@ void *thread_audio_av(void *data)
 
                 if (read_bytes == 0)
                 {
-                    dbg(9, "Audio:CL:001\n");
-                    pclose(pipein);
-                    
-                    yieldcpu(10);
-                    
-                    dbg(9, "Audio:CL:002\n");
+                    dbg(9, "Audio:CL:001 pipein=%p\n", pipein);
+                    dbg(9, "Audio:CL:001a read_bytes=%d\n", read_bytes);
+                    fflush(pipein);
+                    int res_ = pclose(pipein);
+                    dbg(9, "Audio:CL:002 res_=%d errno=%d\n", res_, (int)errno);
                     // close(input_audio_ts_pipe_fd);
                     // unlink(input_audio_ts_pipe);
                     // mkfifo(input_audio_ts_pipe, 0666);
                     dbg(9, "Audio:CL:003\n");
-                    FILE *pipein = popen(cmd, "r");
-                    dbg(9, "Audio:CL:004\n");
+                    pipein = popen(cmd, "r");
+                    dbg(9, "Audio:CL:004 pipein=%p\n", pipein);
                     // input_audio_ts_pipe_fd = open(input_audio_ts_pipe, O_RDONLY | O_NONBLOCK);
                     read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
-                    dbg(9, "Audio:CL:005\n");
+                    dbg(9, "Audio:CL:005 read_bytes=%d\n", read_bytes);
                     
                     while (bw_rb_full(pcm_rb))
                     {
@@ -3782,6 +3782,7 @@ void *thread_audio_av(void *data)
         }
     }
 
+    fflush(pipein);
     pclose(pipein);
     // close(input_audio_ts_pipe_fd);
     // unlink(input_audio_ts_pipe);
