@@ -3284,7 +3284,7 @@ void *thread_av(void *data)
     char input_video_file[] = "./video.vid";
     int ww = 1280;
     int hh = 720;
-    float fps = 24;
+    float fps = 42; // this is not exact!!
     int chars_for_ffmpeg_showinfo = 244;
     // ----------------- TUNE HERE -----------------
 
@@ -3437,7 +3437,7 @@ void *thread_audio_av(void *data)
     char cmd[1000];
     CLEAR(cmd);
     snprintf(cmd, sizeof(cmd),
-        "ffmpeg -i %s -acodec pcm_s16le -f s16le -ac %d -ar %d pipe:1",
+        "ffmpeg -nostats -i %s -acodec pcm_s16le -f s16le -ac %d -ar %d pipe:1",
         input_video_file, gen_channels, gen_sampling_rate);
 
     // Open an input pipe from ffmpeg
