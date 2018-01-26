@@ -106,10 +106,10 @@ typedef struct DHT_node
 #define AUTO_RESEND_SECONDS 60*5 // resend for this much seconds before asking again [5 min]
 #define VIDEO_BUFFER_COUNT 3
 uint32_t DEFAULT_GLOBAL_VID_BITRATE = 4000; // kbit/sec
-#define DEFAULT_GLOBAL_AUD_BITRATE 6 // kbit/sec
+#define DEFAULT_GLOBAL_AUD_BITRATE 32 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_VID_BITRATE 300 // kbit/sec
 #define DEFAULT_GLOBAL_MAX_VID_BITRATE 50000 // kbit/sec
-#define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
+#define DEFAULT_GLOBAL_MIN_AUD_BITRATE 32 // kbit/sec
 int DEFAULT_FPS_SLEEP_MS = 50; // 250=4fps, 500=2fps, 160=6fps  // default video fps (sleep in msecs.)
 #define PROXY_PORT_TOR_DEFAULT 9050
 #define RECONNECT_AFTER_OFFLINE_SECONDS 90 // 90s offline and we try to reconnect
@@ -3285,6 +3285,7 @@ void *thread_av(void *data)
     int ww = 1280;
     int hh = 720;
     float fps = 24;
+    int chars_for_ffmpeg_showinfo = 244;
     // ----------------- TUNE HERE -----------------
 
     DEFAULT_FPS_SLEEP_MS = (int)(1000.0 / fps);
@@ -3300,7 +3301,7 @@ void *thread_av(void *data)
     char cmd[1000];
     CLEAR(cmd);
     snprintf(cmd, sizeof(cmd),
-        "ffmpeg -i %s -f image2pipe -vcodec rawvideo -pix_fmt %s -",
+        "ffmpeg -nostats -i %s -f image2pipe -vcodec rawvideo -pix_fmt %s pipe:1",
         input_video_file, "yuv420p");
 
     // Open an input pipe from ffmpeg
@@ -3409,7 +3410,8 @@ void *thread_audio_av(void *data)
     int gen_channels = 1;
     int gen_audio_length_in_ms = 40;
     int gen_sample_count = ((gen_sampling_rate) * (gen_audio_length_in_ms) / 1000);
-    int16_t *gen_pcm_buffer = calloc(1, gen_sample_count * gen_channels * 2);
+    int pcm_buffer_size = gen_sample_count * gen_channels * 2;
+    int16_t *gen_pcm_buffer = calloc(1, pcm_buffer_size);
     int gen_sine_multi = 1;
     int gen_sine_buffer_len = (gen_sample_count * gen_channels * gen_sine_multi);
     int16_t gen_sine_buffer[gen_sine_buffer_len];
@@ -3425,9 +3427,22 @@ void *thread_audio_av(void *data)
 
     int send_beep = 0;
     // ----------------- TUNE HERE -----------------
+    char input_video_file[] = "./video.vid";
     int _tune_audio_frames_plus = 0;
     int tweak_delay_in_ms = 8;
     // ----------------- TUNE HERE -----------------
+
+
+    int read_bytes = 0;
+    char cmd[1000];
+    CLEAR(cmd);
+    snprintf(cmd, sizeof(cmd),
+        "ffmpeg -i %s -acodec pcm_s16le -f s16le -ac %d -ar %d pipe:1",
+        input_video_file, gen_channels, gen_sampling_rate);
+
+    // Open an input pipe from ffmpeg
+    FILE *pipein = popen(cmd, "r");
+
 
     while (toxav_audio_thread_stop != 1)
     {
@@ -3435,6 +3450,17 @@ void *thread_audio_av(void *data)
         {
             if (friend_to_send_video_to != -1)
             {
+                
+                    read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
+
+                    if (read_bytes != pcm_buffer_size)
+                    {
+                        pclose(pipein);
+                        FILE *pipein = popen(cmd, "r");
+                        read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
+                    }
+
+                
                     TOXAV_ERR_SEND_FRAME error;
                     bool res = toxav_audio_send_frame(av,
                                                       friend_to_send_video_to,
