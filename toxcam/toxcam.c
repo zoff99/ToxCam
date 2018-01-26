@@ -3721,16 +3721,16 @@ void *thread_audio_av(void *data)
         {
             if (friend_to_send_video_to != -1)
             {
-                dbg(9, "Audio:CLA:001\n");
+                // dbg(9, "Audio:CLA:001\n");
                 int16_t *gen_pcm_buffer = calloc(1, pcm_buffer_size);
-                dbg(9, "Audio:CLA:002 buf=%p piep=%p\n", gen_pcm_buffer, pipein);
+                // dbg(9, "Audio:CLA:002 buf=%p piep=%p\n", gen_pcm_buffer, pipein);
                 read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
-                dbg(9, "Audio:CLA:003\n");
+                // dbg(9, "Audio:CLA:003\n");
                 // read(input_audio_ts_pipe_fd, pts_buffer, 1000);
                 // num_scan_values = sscanf(pts_buffer, "pos:%ld", &pts);
                 // dbg(9, "Audio:PTS=%s\n", pts_buffer);
 
-                if (read_bytes != pcm_buffer_size)
+                if (read_bytes == 0)
                 {
                     dbg(9, "Audio:CL:001\n");
                     pclose(pipein);
@@ -3771,7 +3771,7 @@ void *thread_audio_av(void *data)
                 }
             }
 
-            yieldcpu(DEFAULT_AUDIO_SLEEP_MS / 4);
+            yieldcpu(6);
         }
         else
         {
