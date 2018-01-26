@@ -34,8 +34,10 @@
 #include <math.h>
 
 #include <sys/types.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <sys/sysinfo.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <fcntl.h>
@@ -281,6 +283,7 @@ const char *log_filename = "toxcam.log";
 const char *my_avatar_filename = "avatar.png";
 
 char *v4l2_device; // video device filename
+int cpu_cores = 1;
 
 const char *shell_cmd__single_shot = "./scripts/single_shot.sh 2> /dev/null";
 const char *shell_cmd__get_cpu_temp = "./scripts/get_cpu_temp.sh 2> /dev/null";
@@ -3279,15 +3282,13 @@ void *thread_av(void *data)
         v4l_startread();
     }
 
-
     // ----------------- TUNE HERE -----------------
     char input_video_file[] = "./video.vid";
     int ww = 1280;
     int hh = 720;
     float fps = 70; // this is not exact, sorry!!
-    int chars_for_ffmpeg_showinfo = 244;
     // ----------------- TUNE HERE -----------------
-
+    char input_video_ts_pipe[] = "./v_ts.pipe";
     DEFAULT_FPS_SLEEP_MS = (int)(1000.0 / fps);
     uint8_t *yy;
     uint8_t *uu;
@@ -3296,16 +3297,20 @@ void *thread_av(void *data)
     int frame_size_in_bytes = (ww * hh) * 1.5;
     uu = yy + (ww * hh);
     vv = uu + ((ww / 2) * (hh / 2));
-
+    char *pts_buffer = calloc(1, 5000);
+    unlink(input_video_ts_pipe);
+    mkfifo(input_video_ts_pipe, 0666);
     int read_bytes = 0;
     char cmd[1000];
     CLEAR(cmd);
     snprintf(cmd, sizeof(cmd),
-        "ffmpeg -nostats -i %s -f image2pipe -vcodec rawvideo -pix_fmt %s pipe:1",
-        input_video_file, "yuv420p");
-
+             "ffmpeg -y -hide_banner -nostats -i %s -threads %d -vf showinfo -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s pipe:1 2> %s",
+             input_video_file, cpu_cores, "yuv420p", input_video_ts_pipe);
     // Open an input pipe from ffmpeg
     FILE *pipein = popen(cmd, "r");
+    int input_video_ts_pipe_fd = open(input_video_ts_pipe, O_RDONLY);
+    int num_scan_values = 0;
+    long pts = 0;
 
     while (toxav_iterate_thread_stop != 1)
     {
@@ -3326,46 +3331,49 @@ void *thread_av(void *data)
                 if (friend_to_send_video_to != -1)
                 {
                     read_bytes = fread(yy, 1, frame_size_in_bytes, pipein);
+                    read(input_video_ts_pipe_fd, pts_buffer, 1000);
+                    num_scan_values = sscanf(pts_buffer, " pos:%ld ", &pts);
+                    dbg(9, "Video:PTS=%ld\n", pts);
 
                     if (read_bytes != frame_size_in_bytes)
                     {
                         pclose(pipein);
+                        close(input_video_ts_pipe);
+                        unlink(input_video_ts_pipe);
+                        mkfifo(input_video_ts_pipe, 0666);
                         FILE *pipein = popen(cmd, "r");
+                        input_video_ts_pipe_fd = open(input_video_ts_pipe, O_RDONLY);
                     }
 
-                        // dbg(9, "AV Thread #%d:send frame to friend num=%d\n", (int) id, (int)friend_to_send_video_to);
-                        TOXAV_ERR_SEND_FRAME error = 0;
-                        toxav_video_send_frame(av, friend_to_send_video_to, ww, hh,
-                                               yy, uu, vv, &error);
-                                               
+                    // dbg(9, "AV Thread #%d:send frame to friend num=%d\n", (int) id, (int)friend_to_send_video_to);
+                    TOXAV_ERR_SEND_FRAME error = 0;
+                    toxav_video_send_frame(av, friend_to_send_video_to, ww, hh,
+                                           yy, uu, vv, &error);
 
-                        if (error)
+                    if (error)
+                    {
+                        if (error == TOXAV_ERR_SEND_FRAME_SYNC)
                         {
-                            if (error == TOXAV_ERR_SEND_FRAME_SYNC)
-                            {
-                                //debug_notice("uToxVideo:\tVid Frame sync error: w=%u h=%u\n", av_video_frame.w,
-                                //           av_video_frame.h);
-                                dbg(0, "TOXAV_ERR_SEND_FRAME_SYNC\n");
-                            }
-                            else if (error == TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED)
-                            {
-                                //debug_error("uToxVideo:\tToxAV disagrees with our AV state for friend %lu, self %u, friend %u\n",
-                                //  i, friend[i].call_state_self, friend[i].call_state_friend);
-                                dbg(0, "TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED\n");
-                            }
-                            else
-                            {
-                                //debug_error("uToxVideo:\ttoxav_send_video error friend: %i error: %u\n",
-                                //          friend[i].number, error);
-                                dbg(0, "ToxVideo:toxav_send_video error %u\n", error);
-                                // *TODO* if these keep piling up --> just disconnect the call!!
-                                // *TODO* if these keep piling up --> just disconnect the call!!
-                                // *TODO* if these keep piling up --> just disconnect the call!!
-                            }
+                            //debug_notice("uToxVideo:\tVid Frame sync error: w=%u h=%u\n", av_video_frame.w,
+                            //           av_video_frame.h);
+                            dbg(0, "TOXAV_ERR_SEND_FRAME_SYNC\n");
                         }
-                    
-    
-
+                        else if (error == TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED)
+                        {
+                            //debug_error("uToxVideo:\tToxAV disagrees with our AV state for friend %lu, self %u, friend %u\n",
+                            //  i, friend[i].call_state_self, friend[i].call_state_friend);
+                            dbg(0, "TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED\n");
+                        }
+                        else
+                        {
+                            //debug_error("uToxVideo:\ttoxav_send_video error friend: %i error: %u\n",
+                            //          friend[i].number, error);
+                            dbg(0, "ToxVideo:toxav_send_video error %u\n", error);
+                            // *TODO* if these keep piling up --> just disconnect the call!!
+                            // *TODO* if these keep piling up --> just disconnect the call!!
+                            // *TODO* if these keep piling up --> just disconnect the call!!
+                        }
+                    }
                 }
             }
             else if (r == -1)
@@ -3387,9 +3395,10 @@ void *thread_av(void *data)
     }
 
     free(yy);
-
     fflush(pipein);
     pclose(pipein);
+    close(input_video_ts_pipe);
+    unlink(input_video_ts_pipe);
 
     if (video_call_enabled == 1)
     {
@@ -3426,23 +3435,26 @@ void *thread_audio_av(void *data)
     }
 
     int send_beep = 0;
+    char input_audio_ts_pipe[] = "./a_ts.pipe";
     // ----------------- TUNE HERE -----------------
     char input_video_file[] = "./video.vid";
     int _tune_audio_frames_plus = 0;
     int tweak_delay_in_ms = 8;
     // ----------------- TUNE HERE -----------------
-
-
+    char *pts_buffer = calloc(1, 5000);
+    unlink(input_audio_ts_pipe);
+    mkfifo(input_audio_ts_pipe, 0666);
     int read_bytes = 0;
     char cmd[1000];
     CLEAR(cmd);
     snprintf(cmd, sizeof(cmd),
-        "ffmpeg -nostats -i %s -acodec pcm_s16le -f s16le -ac %d -ar %d pipe:1",
-        input_video_file, gen_channels, gen_sampling_rate);
-
+             "ffmpeg -y -hide_banner -nostats -i %s -threads %d -af ashowinfo -an -sn -acodec pcm_s16le -f s16le -ac %d -ar %d pipe:1 2> %s",
+             input_video_file, cpu_cores, gen_channels, gen_sampling_rate, input_audio_ts_pipe);
     // Open an input pipe from ffmpeg
     FILE *pipein = popen(cmd, "r");
-
+    int input_audio_ts_pipe_fd = open(input_audio_ts_pipe, O_RDONLY);
+    int num_scan_values = 0;
+    long pts = 0;
 
     while (toxav_audio_thread_stop != 1)
     {
@@ -3450,24 +3462,28 @@ void *thread_audio_av(void *data)
         {
             if (friend_to_send_video_to != -1)
             {
-                
+                read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
+                read(input_audio_ts_pipe_fd, pts_buffer, 1000);
+                num_scan_values = sscanf(pts_buffer, " pos:%ld ", &pts);
+                dbg(9, "Audio:PTS=%ld\n", pts);
+
+                if (read_bytes != pcm_buffer_size)
+                {
+                    pclose(pipein);
+                    unlink(input_audio_ts_pipe);
+                    mkfifo(input_audio_ts_pipe, 0666);
+                    FILE *pipein = popen(cmd, "r");
+                    input_audio_ts_pipe_fd = open(input_audio_ts_pipe, O_RDONLY);
                     read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
+                }
 
-                    if (read_bytes != pcm_buffer_size)
-                    {
-                        pclose(pipein);
-                        FILE *pipein = popen(cmd, "r");
-                        read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
-                    }
-
-                
-                    TOXAV_ERR_SEND_FRAME error;
-                    bool res = toxav_audio_send_frame(av,
-                                                      friend_to_send_video_to,
-                                                      gen_pcm_buffer,
-                                                      (size_t)gen_sample_count,
-                                                      (uint8_t)gen_channels,
-                                                      (uint32_t)gen_sampling_rate, &error);
+                TOXAV_ERR_SEND_FRAME error;
+                bool res = toxav_audio_send_frame(av,
+                                                  friend_to_send_video_to,
+                                                  gen_pcm_buffer,
+                                                  (size_t)gen_sample_count,
+                                                  (uint8_t)gen_channels,
+                                                  (uint32_t)gen_sampling_rate, &error);
             }
 
             usleep((gen_audio_length_in_ms * 1000) - tweak_delay_in_ms);
@@ -3479,7 +3495,7 @@ void *thread_audio_av(void *data)
     }
 
     pclose(pipein);
-
+    unlink(input_audio_ts_pipe);
     dbg(2, "ToxAudio:Clean audio thread exit!\n");
     return NULL;
 }
@@ -4135,6 +4151,8 @@ int main(int argc, char *argv[])
         }
     }
 
+    cpu_cores = get_nprocs();
+    dbg(9, "detected %d processors\n", cpu_cores);
     Tox *tox = create_tox();
     global_start_time = time(NULL);
     const char *name = "AVStreamTest";
