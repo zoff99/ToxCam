@@ -289,6 +289,7 @@ const char *shell_cmd__single_shot = "./scripts/single_shot.sh 2> /dev/null";
 const char *shell_cmd__get_cpu_temp = "./scripts/get_cpu_temp.sh 2> /dev/null";
 const char *shell_cmd__get_gpu_temp = "./scripts/get_gpu_temp.sh 2> /dev/null";
 const char *shell_cmd__get_my_number_of_open_files = "cat /proc/sys/fs/file-nr 2> /dev/null";
+const char *shell_cmd__get_video_fps = "./scripts/get_video_fps.sh 2> /dev/null";
 int global_want_restart = 0;
 const char *global_timestamp_format = "%H:%M:%S";
 const char *global_long_timestamp_format = "%Y-%m-%d %H:%M:%S";
@@ -3300,13 +3301,10 @@ void *thread_av(void *data)
         v4l_startread();
     }
 
-    // ----------------- TUNE HERE -----------------
     char input_video_file[] = "./video.vid";
     int ww = 1280; // this will be autodetected
     int hh = 720; // this will be autodetected
-    float fps = 70; // this is not exact, sorry!!
-    // ----------------- TUNE HERE -----------------
-    
+    float fps = 24; // this will be autodetected    
     
     char cmd[1000];
     char output_str[1000];
@@ -3335,6 +3333,16 @@ void *thread_av(void *data)
     }
     
     dbg(9, "Video:width=%d height=%d\n", ww, hh);
+
+    CLEAR(output_str);
+    run_cmd_return_output(shell_cmd__get_video_fps, output_str, 1);
+
+    if (strlen(output_str) > 0)
+    {
+        fps = atof(output_str);
+    }
+
+    dbg(9, "Video:fps=%f\n", fps);
 
     char input_video_ts_pipe[] = "./v_ts.pipe";
     DEFAULT_FPS_SLEEP_MS = (int)(1000.0 / fps);
