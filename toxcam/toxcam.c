@@ -109,7 +109,7 @@ typedef struct DHT_node
 #define MAX_RESEND_FILE_BEFORE_ASK 6
 #define AUTO_RESEND_SECONDS 60*5 // resend for this much seconds before asking again [5 min]
 #define VIDEO_BUFFER_COUNT 3
-uint32_t DEFAULT_GLOBAL_VID_BITRATE = 4000; // kbit/sec
+uint32_t DEFAULT_GLOBAL_VID_BITRATE = 800; // kbit/sec
 #define DEFAULT_GLOBAL_AUD_BITRATE 32 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_VID_BITRATE 300 // kbit/sec
 #define DEFAULT_GLOBAL_MAX_VID_BITRATE 50000 // kbit/sec
@@ -3328,7 +3328,7 @@ void *thread_av(void *data)
         v4l_startread();
     }
 
-    char input_video_file[] = "./video.vid";
+    char input_video_file[] = "./video.vid"; // name hardcoded!! DO NOT CHANGE !!
     int ww = 1280; // this will be autodetected
     int hh = 720; // this will be autodetected
     float fps = 24; // this will be autodetected
@@ -3524,7 +3524,7 @@ void *thread_av(void *data)
             }
 
             __utimer_start(&tm_outgoing_video_frames);
-            yieldcpu(new_sleep + 2); /* +2ms tweak */
+            yieldcpu(new_sleep + 1); /* +1ms tweak */
             last_sleep = new_sleep;
         }
         else
@@ -3774,7 +3774,7 @@ void *thread_audio_av(void *data)
                 }
             }
 
-            yieldcpu(DEFAULT_AUDIO_SLEEP_MS / 1.5);
+            yieldcpu(DEFAULT_AUDIO_SLEEP_MS / 2);
         }
         else
         {
