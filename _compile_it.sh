@@ -78,9 +78,9 @@ cd $_HOME_/build
 
 if [ "$full""x" == "1x" ]; then
     rm -Rf c-toxcore
-    git clone https://github.com/TokTok/c-toxcore
+    git clone https://github.com/zoff99/c-toxcore
     cd c-toxcore
-    git checkout v0.1.11
+    git checkout "zoff99/_0.1.10_2017_video_fix_07a"
     ./autogen.sh
     export CFLAGS=" -D_GNU_SOURCE -g -O3 -I$_INST_/include/ -Wall -Wextra "
     export LDFLAGS=" -O3 -L$_INST_/lib "
@@ -91,9 +91,9 @@ if [ "$full""x" == "1x" ]; then
     unset LDFLAGS
 else
     rm -Rf c-toxcore
-    git clone https://github.com/TokTok/c-toxcore
+    git clone https://github.com/zoff99/c-toxcore
     cd c-toxcore
-    git checkout v0.1.11
+    git checkout "zoff99/_0.1.10_2017_video_fix_07a"
     ./autogen.sh
 
     export CFLAGS=" -D_GNU_SOURCE -g -O3 -I$_INST_/include/ -Wall -Wextra "
