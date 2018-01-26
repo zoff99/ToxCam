@@ -3734,6 +3734,9 @@ void *thread_audio_av(void *data)
                 {
                     dbg(9, "Audio:CL:001\n");
                     pclose(pipein);
+                    
+                    yieldcpu(10);
+                    
                     dbg(9, "Audio:CL:002\n");
                     // close(input_audio_ts_pipe_fd);
                     // unlink(input_audio_ts_pipe);
@@ -3747,7 +3750,7 @@ void *thread_audio_av(void *data)
                     
                     while (bw_rb_full(pcm_rb))
                     {
-                        yieldcpu(5);
+                        yieldcpu(1);
                     }
                     
                     void *p = bw_rb_write(pcm_rb, gen_pcm_buffer, 0, 0);
@@ -3760,7 +3763,7 @@ void *thread_audio_av(void *data)
                 {
                     while (bw_rb_full(pcm_rb))
                     {
-                        yieldcpu(5);
+                        yieldcpu(1);
                     }
 
                     void *p = bw_rb_write(pcm_rb, gen_pcm_buffer, 0, 0);
@@ -3771,7 +3774,7 @@ void *thread_audio_av(void *data)
                 }
             }
 
-            yieldcpu(6);
+            yieldcpu(DEFAULT_AUDIO_SLEEP_MS / 1.5);
         }
         else
         {
@@ -4539,7 +4542,7 @@ int main(int argc, char *argv[])
         dbg(2, "AV video Thread successfully created\n");
     }
 
-    pcm_rb = bw_rb_new(20);
+    pcm_rb = bw_rb_new(10);
     toxav_audio_thread_stop = 0;
 
     if (pthread_create(&(tid[2]), NULL, thread_audio_av, (void *)mytox_av) != 0)
