@@ -22,6 +22,7 @@ cd $_HOME_/toxcam
 gcc -O3 -g -Wall \
 -o toxcam_static \
 toxcam.c \
+rb.c \
 -static -std=gnu99 \
 -L$_INST_/lib -I$_INST_/include/ \
 -lsodium \
