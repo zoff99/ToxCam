@@ -3386,7 +3386,7 @@ void *thread_av(void *data)
     CLEAR(cmd);
 #if 1
     snprintf(cmd, sizeof(cmd),
-             "ffmpeg -y -hide_banner -nostats -i %s -threads %d -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s - 2>/dev/null",
+             "ffmpeg -y -hide_banner -nostats -i %s -threads %d -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s - </dev/null",
              input_video_file, cpu_cores, "yuv420p");
 #else
     snprintf(cmd, sizeof(cmd),
@@ -3698,7 +3698,7 @@ void *thread_audio_av(void *data)
     CLEAR(cmd);
 #if 1
     snprintf(cmd, sizeof(cmd),
-             "ffmpeg -y -hide_banner -nostats -i %s -threads %d -acodec pcm_s16le -f s16le -ac %d -ar %d - 2> /dev/null",
+             "ffmpeg -y -hide_banner -nostats -i %s -threads %d -acodec pcm_s16le -f s16le -ac %d -ar %d - </dev/null",
              input_video_file, cpu_cores, gen_channels, gen_sampling_rate);
 #else
     snprintf(cmd, sizeof(cmd),
