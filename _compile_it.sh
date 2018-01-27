@@ -31,6 +31,9 @@ git clone https://github.com/jedisct1/libsodium
 cd libsodium
 git checkout 1.0.13
 autoreconf -fi
+export CFLAGS=" -g -O3 -I$_INST_/include/ -Wall -Wextra "
+export CXXFLAGS=" -g -O3 -I$_INST_/include/ -Wall -Wextra "
+export LDFLAGS=" -O3 -L$_INST_/lib "
 ./configure --prefix=$_INST_ --disable-shared --disable-soname-versions
 make -j4
 make install
@@ -42,6 +45,9 @@ git clone https://github.com/xiph/opus.git
 cd opus
 git checkout v1.2.1
 ./autogen.sh
+export CFLAGS=" -g -O3 -I$_INST_/include/ -Wall -Wextra "
+export CXXFLAGS=" -g -O3 -I$_INST_/include/ -Wall -Wextra "
+export LDFLAGS=" -O3 -L$_INST_/lib "
 ./configure --prefix=$_INST_ --disable-shared
 make -j 4
 make install
@@ -76,11 +82,16 @@ fi
 cd $_HOME_/build
 
 
+# toxcore_repo="https://github.com/zoff99/c-toxcore"
+# toxcore_hash="zoff99/_0.1.10_2017_video_fix_07a"
+toxcore_repo="https://github.com/TokTok/c-toxcore"
+toxcore_hash="master"
+
 if [ "$full""x" == "1x" ]; then
     rm -Rf c-toxcore
-    git clone https://github.com/zoff99/c-toxcore
+    git clone "$toxcore_repo"
     cd c-toxcore
-    git checkout "zoff99/_0.1.10_2017_video_fix_07a"
+    git checkout "$toxcore_hash"
     ./autogen.sh
     export CFLAGS=" -D_GNU_SOURCE -g -O3 -I$_INST_/include/ -Wall -Wextra "
     export LDFLAGS=" -O3 -L$_INST_/lib "
@@ -91,9 +102,9 @@ if [ "$full""x" == "1x" ]; then
     unset LDFLAGS
 else
     rm -Rf c-toxcore
-    git clone https://github.com/zoff99/c-toxcore
+    git clone "$toxcore_repo"
     cd c-toxcore
-    git checkout "zoff99/_0.1.10_2017_video_fix_07a"
+    git checkout "$toxcore_hash"
     ./autogen.sh
 
     export CFLAGS=" -D_GNU_SOURCE -g -O3 -I$_INST_/include/ -Wall -Wextra "
