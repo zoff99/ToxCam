@@ -83,8 +83,8 @@ cd $_HOME_/build
 
 
 toxcore_repo="https://github.com/zoff99/c-toxcore"
-toxcore_hash="orig_master"
-# toxcore_hash="zoff99/_0.1.10_2017_video_fix_07a"
+# toxcore_hash="orig_master"
+toxcore_hash="zoff99/_0.1.10_2017_video_fix_07a"
 # toxcore_repo="https://github.com/TokTok/c-toxcore"
 # toxcore_hash="master"
 
