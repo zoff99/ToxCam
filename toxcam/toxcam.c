@@ -459,7 +459,8 @@ uint64_t tc_current_time_monotonic(void)
 
     /* Check if time has decreased because of 32 bit wrap from GetTickCount(), while avoiding false positives from race
      * conditions when multiple threads call this function at once */
-    if (time + 0x10000 < last_monotime) {
+    if (time + 0x10000 < last_monotime)
+    {
         uint32_t add = ~0;
         /* use old_add_monotime rather than simply incrementing add_monotime, to handle the case that many threads
          * simultaneously detect an overflow */
@@ -475,11 +476,9 @@ uint64_t tc_current_time_monotonic(void)
 #elif defined(__APPLE__)
     clock_serv_t muhclock;
     mach_timespec_t machtime;
-
     host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &muhclock);
     clock_get_time(muhclock, &machtime);
     mach_port_deallocate(mach_task_self(), muhclock);
-
     monotime.tv_sec = machtime.tv_sec;
     monotime.tv_nsec = machtime.tv_nsec;
 #else
@@ -3472,7 +3471,6 @@ void *thread_av(void *data)
     static struct timeval tm_outgoing_video_frames;
     int new_sleep = DEFAULT_FPS_SLEEP_MS;
     int last_sleep = DEFAULT_FPS_SLEEP_MS;
-
     uint64_t current_video_frame = 0;
     double current_video_pts_ms = 0;
     uint64_t start_video_pts_ms = tc_current_time_monotonic();
@@ -3516,7 +3514,6 @@ void *thread_av(void *data)
                         // input_video_ts_pipe_fd = open(input_video_ts_pipe, O_RDONLY | O_NONBLOCK);
                         read_bytes = fread(yy, 1, frame_size_in_bytes, pipein);
                         dbg(9, "VIDEO:CL:004\n");
-                        
                         current_video_frame = 0;
                     }
 
@@ -3529,6 +3526,7 @@ void *thread_av(void *data)
                     {
                         start_video_pts_ms = tc_current_time_monotonic();
                     }
+
                     should_video_pts_ms = tc_current_time_monotonic() - start_video_pts_ms;
                     current_video_pts_ms = (((double)current_video_frame / fps) * (double)1000.0);
                     current_video_frame++;
@@ -3538,16 +3536,16 @@ void *thread_av(void *data)
                     // HINT: now synchronize to auto PTS
                     if (abs(current_video_pts_ms - current_audio_pts_ms) > 10)
                     {
-                         DEFAULT_FPS_SLEEP_MS = DEFAULT_FPS_SLEEP_MS
-                            + (current_video_pts_ms - current_audio_pts_ms);
-                         if (DEFAULT_FPS_SLEEP_MS < 3)
-                         {
-                             DEFAULT_FPS_SLEEP_MS = 3;
-                         }
+                        DEFAULT_FPS_SLEEP_MS = DEFAULT_FPS_SLEEP_MS
+                                               + (current_video_pts_ms - current_audio_pts_ms);
+
+                        if (DEFAULT_FPS_SLEEP_MS < 3)
+                        {
+                            DEFAULT_FPS_SLEEP_MS = 3;
+                        }
                     }
 
                     // dbg(9, "V:pos DEFAULT_FPS_SLEEP_MS=%d\n", (int)DEFAULT_FPS_SLEEP_MS);
-
 
                     // dbg(9, "Video: is=%lld should=%lld\n",
                     //    (long long)current_video_pts_ms,
@@ -3628,6 +3626,21 @@ void *thread_av(void *data)
                 new_sleep = DEFAULT_FPS_SLEEP_MS;
             }
 
+            // HINT: safety check --------
+            if (new_sleep > 2000)
+            {
+                new_sleep = 3;
+                // dbg(9, "V:sleep=3 ms\n");
+            }
+            else
+            {
+                if (new_sleep > 500)
+                {
+                    new_sleep = 1000 / 24; // just use 24fps
+                    // dbg(9, "V:sleep=%d ms\n", (int)(1000 / 24));
+                }
+            }
+
             __utimer_start(&tm_outgoing_video_frames);
             yieldcpu(new_sleep - 1);
             last_sleep = new_sleep;
@@ -3665,7 +3678,6 @@ void *thread_audio_send_av(void *data)
     int DEFAULT_AUDIO_SLEEP_MS_2 = gen_audio_length_in_ms;
     int new_sleep = DEFAULT_AUDIO_SLEEP_MS_2;
     int last_sleep = DEFAULT_AUDIO_SLEEP_MS_2;
-
     uint64_t current_audio_frame = 0;
     current_audio_pts_ms = 0;
 
@@ -3742,8 +3754,8 @@ void *thread_audio_send_av(void *data)
                         {
                             new_sleep = DEFAULT_AUDIO_SLEEP_MS_2;
                         }
-                        // HINT: safety check -------------
 
+                        // HINT: safety check -------------
                         __utimer_start(&tm_outgoing_audio_frames);
                         usleep((new_sleep * 1000) - 1);
                         // dbg(9, "Audio: sleep=%d\n", new_sleep);
@@ -3838,7 +3850,6 @@ void *thread_audio_av(void *data)
     int DEFAULT_AUDIO_SLEEP_MS = gen_audio_length_in_ms;
     int new_sleep = DEFAULT_AUDIO_SLEEP_MS;
     int last_sleep = DEFAULT_AUDIO_SLEEP_MS;
-
     current_audio_pts_ms = 0;
 
     while (toxav_audio_thread_stop != 1)
@@ -3873,13 +3884,14 @@ void *thread_audio_av(void *data)
                     // input_audio_ts_pipe_fd = open(input_audio_ts_pipe, O_RDONLY | O_NONBLOCK);
                     read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
                     dbg(9, "Audio:CL:005 read_bytes=%d\n", read_bytes);
-                    
+
                     while (bw_rb_full(pcm_rb))
                     {
                         yieldcpu(1);
                     }
-                    
+
                     void *p = bw_rb_write(pcm_rb, gen_pcm_buffer, 1, 0);
+
                     if (p)
                     {
                         free(p);
@@ -3893,6 +3905,7 @@ void *thread_audio_av(void *data)
                     }
 
                     void *p = bw_rb_write(pcm_rb, gen_pcm_buffer, 0, 0);
+
                     if (p)
                     {
                         free(p);
@@ -3912,10 +3925,10 @@ void *thread_audio_av(void *data)
     pclose(pipein);
     // close(input_audio_ts_pipe_fd);
     // unlink(input_audio_ts_pipe);
-
     uint32_t dummy1;
     uint32_t dummy2;
-    int16_t *dummy_buf= NULL;
+    int16_t *dummy_buf = NULL;
+
     while (bw_rb_read(pcm_rb, &dummy_buf, &dummy1, &dummy2))
     {
         free(dummy_buf);
