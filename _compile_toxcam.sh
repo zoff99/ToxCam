@@ -32,7 +32,7 @@ rb.c \
 -ltoxcore -ltoxav \
 -lsodium -lpthread -static-libgcc -static-libstdc++ -lopus \
 -lvpx -lm -lpthread -lv4lconvert -ljpeg -lm -lrt -lpthread
- 
+
 else
 
 gcc \
