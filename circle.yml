@@ -123,7 +123,7 @@ dependencies:
       export TARGET_HOST="--host=x86_64-w64-mingw32" ;
       export TARGET_TRGT="--target=x86_64-win32-gcc" ;
       export CROSS="x86_64-w64-mingw32-" ;
-      ./configure "$TARGET_HOST" --prefix=~/win_cache/usr
+      ./configure "$TARGET_HOST" --prefix=/home/ubuntu/win_cache/usr
     - cd ~/winbuild; cd libsodium ; make -j4
     - cd ~/winbuild; cd libsodium ; make install
 
