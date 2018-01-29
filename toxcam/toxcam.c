@@ -322,6 +322,7 @@ int gen_sample_count;
 int gen_audio_length_in_ms;
 int first_audio_frame_sent = 0;
 BWRingBuffer *pcm_rb = NULL;
+double current_audio_pts_ms = 0;
 
 uint32_t global_audio_bit_rate;
 uint32_t global_video_bit_rate;
@@ -419,6 +420,75 @@ void dbg(int level, const char *fmt, ...)
     // fprintf(stderr, "free:002\n");
 }
 
+
+
+/*  return current UNIX time in microseconds (us). */
+static uint64_t tc_current_time_actual(void)
+{
+    uint64_t time;
+#if defined(_WIN32) || defined(__WIN32__) || defined (WIN32)
+    /* This probably works fine */
+    FILETIME ft;
+    GetSystemTimeAsFileTime(&ft);
+    time = ft.dwHighDateTime;
+    time <<= 32;
+    time |= ft.dwLowDateTime;
+    time -= 116444736000000000ULL;
+    return time / 10;
+#else
+    struct timeval a;
+    gettimeofday(&a, NULL);
+    time = 1000000ULL * a.tv_sec + a.tv_usec;
+    return time;
+#endif
+}
+
+
+#if defined(_WIN32) || defined(__WIN32__) || defined (WIN32)
+static uint64_t last_monotime;
+static uint64_t add_monotime;
+#endif
+
+/* return current monotonic time in milliseconds (ms). */
+uint64_t tc_current_time_monotonic(void)
+{
+    uint64_t time;
+#if defined(_WIN32) || defined(__WIN32__) || defined (WIN32)
+    uint64_t old_add_monotime = add_monotime;
+    time = (uint64_t)GetTickCount() + add_monotime;
+
+    /* Check if time has decreased because of 32 bit wrap from GetTickCount(), while avoiding false positives from race
+     * conditions when multiple threads call this function at once */
+    if (time + 0x10000 < last_monotime) {
+        uint32_t add = ~0;
+        /* use old_add_monotime rather than simply incrementing add_monotime, to handle the case that many threads
+         * simultaneously detect an overflow */
+        add_monotime = old_add_monotime + add;
+        time += add;
+    }
+
+    last_monotime = time;
+#else
+    struct timespec monotime;
+#if defined(__linux__) && defined(CLOCK_MONOTONIC_RAW)
+    clock_gettime(CLOCK_MONOTONIC_RAW, &monotime);
+#elif defined(__APPLE__)
+    clock_serv_t muhclock;
+    mach_timespec_t machtime;
+
+    host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &muhclock);
+    clock_get_time(muhclock, &machtime);
+    mach_port_deallocate(mach_task_self(), muhclock);
+
+    monotime.tv_sec = machtime.tv_sec;
+    monotime.tv_nsec = machtime.tv_nsec;
+#else
+    clock_gettime(CLOCK_MONOTONIC, &monotime);
+#endif
+    time = 1000ULL * monotime.tv_sec + (monotime.tv_nsec / 1000000ULL);
+#endif
+    return time;
+}
 
 
 
@@ -3331,7 +3401,7 @@ void *thread_av(void *data)
     char input_video_file[] = "./video.vid"; // name hardcoded!! DO NOT CHANGE !!
     int ww = 1280; // this will be autodetected
     int hh = 720; // this will be autodetected
-    float fps = 24; // this will be autodetected
+    double fps = 24; // this will be autodetected
     char cmd[1000];
     char output_str[1000];
     CLEAR(cmd);
@@ -3403,6 +3473,11 @@ void *thread_av(void *data)
     int new_sleep = DEFAULT_FPS_SLEEP_MS;
     int last_sleep = DEFAULT_FPS_SLEEP_MS;
 
+    uint64_t current_video_frame = 0;
+    double current_video_pts_ms = 0;
+    uint64_t start_video_pts_ms = tc_current_time_monotonic();
+    uint64_t should_video_pts_ms = 0;
+
     while (toxav_iterate_thread_stop != 1)
     {
         if (global_video_active == 1)
@@ -3441,12 +3516,39 @@ void *thread_av(void *data)
                         // input_video_ts_pipe_fd = open(input_video_ts_pipe, O_RDONLY | O_NONBLOCK);
                         read_bytes = fread(yy, 1, frame_size_in_bytes, pipein);
                         dbg(9, "VIDEO:CL:004\n");
+                        
+                        current_video_frame = 0;
                     }
 
                     // dbg(9, "AV Thread #%d:send frame to friend num=%d\n", (int) id, (int)friend_to_send_video_to);
                     TOXAV_ERR_SEND_FRAME error = 0;
                     toxav_video_send_frame(av, friend_to_send_video_to, ww, hh,
                                            yy, uu, vv, &error);
+
+                    if (current_video_frame == 0)
+                    {
+                        start_video_pts_ms = tc_current_time_monotonic();
+                    }
+                    should_video_pts_ms = tc_current_time_monotonic() - start_video_pts_ms;
+                    current_video_pts_ms = (((double)current_video_frame / fps) * (double)1000.0);
+                    current_video_frame++;
+
+                    // dbg(9, "V:pos ms=%lld\n", (long long)current_video_pts_ms);
+
+                    // HINT: now synchronize to auto PTS
+                    if (abs(current_video_pts_ms - current_audio_pts_ms) > 10)
+                    {
+                         DEFAULT_FPS_SLEEP_MS = DEFAULT_FPS_SLEEP_MS
+                            + (current_video_pts_ms - current_audio_pts_ms);
+                         if (DEFAULT_FPS_SLEEP_MS < 3)
+                         {
+                             DEFAULT_FPS_SLEEP_MS = 3;
+                         }
+                    }
+
+                    // dbg(9, "Video: is=%lld should=%lld\n",
+                    //    (long long)current_video_pts_ms,
+                    //    (long long)should_video_pts_ms);
 
                     if (error)
                     {
@@ -3524,7 +3626,7 @@ void *thread_av(void *data)
             }
 
             __utimer_start(&tm_outgoing_video_frames);
-            yieldcpu(new_sleep + 1); /* +1ms tweak */
+            yieldcpu(new_sleep - 1);
             last_sleep = new_sleep;
         }
         else
@@ -3561,6 +3663,9 @@ void *thread_audio_send_av(void *data)
     int new_sleep = DEFAULT_AUDIO_SLEEP_MS;
     int last_sleep = DEFAULT_AUDIO_SLEEP_MS;
 
+    uint64_t current_audio_frame = 0;
+    current_audio_pts_ms = 0;
+
     while (toxav_audio_thread_stop != 1)
     {
         if (global_video_active == 1)
@@ -3587,6 +3692,10 @@ void *thread_audio_send_av(void *data)
                                                           (uint8_t)gen_channels,
                                                           (uint32_t)gen_sampling_rate, &error);
                         free(pcm_buffer);
+
+                        current_audio_frame = current_audio_frame++;
+                        current_audio_pts_ms = current_audio_pts_ms + gen_audio_length_in_ms;
+                        // dbg(9, "A:pos ms=%lld\n", (long long)current_audio_pts_ms);
 
                         // ------- sleep delay autotune -------
                         if (timspan_in_ms != 99999)
@@ -3716,6 +3825,8 @@ void *thread_audio_av(void *data)
     int new_sleep = DEFAULT_AUDIO_SLEEP_MS;
     int last_sleep = DEFAULT_AUDIO_SLEEP_MS;
 
+    current_audio_pts_ms = 0;
+
     while (toxav_audio_thread_stop != 1)
     {
         if (global_video_active == 1)
@@ -3726,6 +3837,7 @@ void *thread_audio_av(void *data)
                 int16_t *gen_pcm_buffer = calloc(1, pcm_buffer_size);
                 // dbg(9, "Audio:CLA:002 buf=%p piep=%p\n", gen_pcm_buffer, pipein);
                 read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
+
                 // dbg(9, "Audio:CLA:003\n");
                 // read(input_audio_ts_pipe_fd, pts_buffer, 1000);
                 // num_scan_values = sscanf(pts_buffer, "pos:%ld", &pts);
@@ -3747,6 +3859,8 @@ void *thread_audio_av(void *data)
                     // input_audio_ts_pipe_fd = open(input_audio_ts_pipe, O_RDONLY | O_NONBLOCK);
                     read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
                     dbg(9, "Audio:CL:005 read_bytes=%d\n", read_bytes);
+
+                    current_audio_pts_ms = 0;
                     
                     while (bw_rb_full(pcm_rb))
                     {
