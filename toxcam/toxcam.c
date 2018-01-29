@@ -319,7 +319,7 @@ int global_ms_to_beep = -1;
 int gen_sampling_rate;
 int gen_channels;
 int gen_sample_count;
-int gen_audio_length_in_ms;
+int gen_audio_length_in_ms = 40; // 40ms PCM pieces
 int first_audio_frame_sent = 0;
 BWRingBuffer *pcm_rb = NULL;
 double current_audio_pts_ms = 0;
@@ -3546,6 +3546,9 @@ void *thread_av(void *data)
                          }
                     }
 
+                    // dbg(9, "V:pos DEFAULT_FPS_SLEEP_MS=%d\n", (int)DEFAULT_FPS_SLEEP_MS);
+
+
                     // dbg(9, "Video: is=%lld should=%lld\n",
                     //    (long long)current_video_pts_ms,
                     //    (long long)should_video_pts_ms);
@@ -3659,9 +3662,9 @@ void *thread_audio_send_av(void *data)
     int16_t *pcm_buffer = NULL;
     long long timspan_in_ms = 99999;
     static struct timeval tm_outgoing_audio_frames;
-    int DEFAULT_AUDIO_SLEEP_MS = gen_audio_length_in_ms;
-    int new_sleep = DEFAULT_AUDIO_SLEEP_MS;
-    int last_sleep = DEFAULT_AUDIO_SLEEP_MS;
+    int DEFAULT_AUDIO_SLEEP_MS_2 = gen_audio_length_in_ms;
+    int new_sleep = DEFAULT_AUDIO_SLEEP_MS_2;
+    int last_sleep = DEFAULT_AUDIO_SLEEP_MS_2;
 
     uint64_t current_audio_frame = 0;
     current_audio_pts_ms = 0;
@@ -3693,6 +3696,11 @@ void *thread_audio_send_av(void *data)
                                                           (uint32_t)gen_sampling_rate, &error);
                         free(pcm_buffer);
 
+                        if (w == 1)
+                        {
+                            current_audio_pts_ms = 0;
+                        }
+
                         current_audio_frame = current_audio_frame++;
                         current_audio_pts_ms = current_audio_pts_ms + gen_audio_length_in_ms;
                         // dbg(9, "A:pos ms=%lld\n", (long long)current_audio_pts_ms);
@@ -3702,11 +3710,11 @@ void *thread_audio_send_av(void *data)
                         {
                             timspan_in_ms = __utimer_stop(&tm_outgoing_audio_frames, "_", 1);
 
-                            if (timspan_in_ms > DEFAULT_AUDIO_SLEEP_MS)
+                            if (timspan_in_ms > DEFAULT_AUDIO_SLEEP_MS_2)
                             {
                                 if (last_sleep > 2)
                                 {
-                                    new_sleep = last_sleep - (timspan_in_ms - DEFAULT_AUDIO_SLEEP_MS);
+                                    new_sleep = last_sleep - (timspan_in_ms - DEFAULT_AUDIO_SLEEP_MS_2);
 
                                     if (new_sleep < 2)
                                     {
@@ -3720,14 +3728,21 @@ void *thread_audio_send_av(void *data)
                             }
                             else
                             {
-                                new_sleep = last_sleep + (DEFAULT_AUDIO_SLEEP_MS - timspan_in_ms);
+                                new_sleep = last_sleep + (DEFAULT_AUDIO_SLEEP_MS_2 - timspan_in_ms);
                             }
                         }
                         else
                         {
                             timspan_in_ms = __utimer_stop(&tm_outgoing_audio_frames, "_", 1);
-                            new_sleep = DEFAULT_AUDIO_SLEEP_MS;
+                            new_sleep = DEFAULT_AUDIO_SLEEP_MS_2;
                         }
+
+                        // HINT: safety check -------------
+                        if (abs(new_sleep - DEFAULT_AUDIO_SLEEP_MS_2) > 5)
+                        {
+                            new_sleep = DEFAULT_AUDIO_SLEEP_MS_2;
+                        }
+                        // HINT: safety check -------------
 
                         __utimer_start(&tm_outgoing_audio_frames);
                         usleep((new_sleep * 1000) + 0);
@@ -3776,7 +3791,6 @@ void *thread_audio_av(void *data)
     int gen_freq_hz = 440; // in Hz
     gen_sampling_rate = 48000;
     gen_channels = 1;
-    gen_audio_length_in_ms = 40;
     gen_sample_count = ((gen_sampling_rate) * (gen_audio_length_in_ms) / 1000);
     int pcm_buffer_size = gen_sample_count * gen_channels * 2;
     int gen_sine_multi = 1;
@@ -3859,15 +3873,13 @@ void *thread_audio_av(void *data)
                     // input_audio_ts_pipe_fd = open(input_audio_ts_pipe, O_RDONLY | O_NONBLOCK);
                     read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
                     dbg(9, "Audio:CL:005 read_bytes=%d\n", read_bytes);
-
-                    current_audio_pts_ms = 0;
                     
                     while (bw_rb_full(pcm_rb))
                     {
                         yieldcpu(1);
                     }
                     
-                    void *p = bw_rb_write(pcm_rb, gen_pcm_buffer, 0, 0);
+                    void *p = bw_rb_write(pcm_rb, gen_pcm_buffer, 1, 0);
                     if (p)
                     {
                         free(p);
