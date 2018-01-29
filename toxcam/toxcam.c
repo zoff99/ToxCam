@@ -3627,18 +3627,10 @@ void *thread_av(void *data)
             }
 
             // HINT: safety check --------
-            if (new_sleep > 2000)
+            if (new_sleep > 500)
             {
-                new_sleep = 3;
-                // dbg(9, "V:sleep=3 ms\n");
-            }
-            else
-            {
-                if (new_sleep > 500)
-                {
-                    new_sleep = 1000 / 24; // just use 24fps
-                    // dbg(9, "V:sleep=%d ms\n", (int)(1000 / 24));
-                }
+                new_sleep = 500; // just use 24fps
+                // dbg(9, "V:sleep=%d ms\n", (int)(1000 / 24));
             }
 
             __utimer_start(&tm_outgoing_video_frames);
