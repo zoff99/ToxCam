@@ -57,7 +57,7 @@ cd $_HOME_/build
 rm -Rf libvpx
 git clone https://github.com/webmproject/libvpx.git
 cd libvpx
-git checkout v1.6.1
+git checkout v1.7.0
 export CFLAGS=" -g -O3 -I$_INST_/include/ -Wall -Wextra "
 export CXXFLAGS=" -g -O3 -I$_INST_/include/ -Wall -Wextra "
 export LDFLAGS=" -O3 -L$_INST_/lib "
@@ -82,10 +82,11 @@ fi
 cd $_HOME_/build
 
 
-# toxcore_repo="https://github.com/zoff99/c-toxcore"
+toxcore_repo="https://github.com/zoff99/c-toxcore"
+toxcore_hash="orig_master"
 # toxcore_hash="zoff99/_0.1.10_2017_video_fix_07a"
-toxcore_repo="https://github.com/TokTok/c-toxcore"
-toxcore_hash="master"
+# toxcore_repo="https://github.com/TokTok/c-toxcore"
+# toxcore_hash="master"
 
 if [ "$full""x" == "1x" ]; then
     rm -Rf c-toxcore
