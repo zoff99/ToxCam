@@ -44,8 +44,8 @@ machine:
     CTOXCORE_URL: "https://github.com/zoff99/c-toxcore"
     LIBSODIUM_VERSION: "tags/1.0.13"
     LIBSODIUM_BRANCH: "1.0.13"
-    OPUS_VERSION="1.1.2"
-    LIBVPX_VERSION="v1.7.0"
+    OPUS_VERSION: "1.1.2"
+    LIBVPX_VERSION: "v1.7.0"
     RASPBERRRY_TOOLS_HASH: d820ab9c21969013b4e56c7e9cba25518afcdd44
     
 dependencies:
