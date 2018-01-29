@@ -63,6 +63,7 @@ dependencies:
     - sudo apt-get install libjpeg-dev
     - sudo apt-get install libpulse-dev
     - sudo apt-get install libconfig-dev
+    - sudo apt-get install -y --no-install-recommends g++-mingw-w64-x86-64 gcc-mingw-w64-x86-64
 
     - sudo bash -c "echo '::1             localhost ipv6-localhost ipv6-loopback' >> /etc/hosts" # ipv6 localhost entry
 
@@ -112,6 +113,21 @@ dependencies:
     ### ------------ compile and install c-toxcore ------------
 
 
+    ### ----------- win compile -----------
+    - cd ~/ ; mkdir winbuild
+    - cd ~/ ; mkdir win_cache
+    - cd ~/winbuild; git clone https://github.com/jedisct1/libsodium.git
+    - cd ~/winbuild; cd libsodium ; git checkout "$LIBSODIUM_BRANCH"
+    - cd ~/winbuild; cd libsodium ; ./autogen.sh
+    - cd ~/winbuild; cd libsodium ;
+      export TARGET_HOST="--host=x86_64-w64-mingw32" ;
+      export TARGET_TRGT="--target=x86_64-win32-gcc" ;
+      export CROSS="x86_64-w64-mingw32-" ;
+      ./configure "$TARGET_HOST" --prefix=~/win_cache/usr
+    - cd ~/winbuild; cd libsodium ; make -j4
+    - cd ~/winbuild; cd libsodium ; make install
+
+    - cd ~/win_cache ; ls -alR
 
 test:
   override:
