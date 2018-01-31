@@ -52,6 +52,20 @@
 #include <vpx/vpx_image.h>
 #include <sys/mman.h>
 
+
+
+
+#if TOX_VERSION_IS_API_COMPATIBLE(0, 2, 0)
+void toxav_callback_bit_rate_status(ToxAV *av,
+     void *callback, void *user_data)
+{
+        // dummy function
+}
+#else
+    // no need to fake the function
+#endif
+
+
 #define V4LCONVERT 1
 // #define HAVE_SOUND 1
 
