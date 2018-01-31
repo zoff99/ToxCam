@@ -129,7 +129,7 @@ dependencies:
     - cd ~/winbuild; cd libsodium ; ./autogen.sh
     - cd ~/winbuild; cd libsodium ;
       export TARGET_HOST="--host=x86_64-w64-mingw32" ;
-      export TARGET_TRGT="--target=x86_64-win32-gcc" ;
+      export TARGET_TRGT="--target=x86_64-win64-gcc" ;
       export CROSS="x86_64-w64-mingw32-" ;
       ./configure "$TARGET_HOST" --prefix=/home/ubuntu/win_cache/usr
     - cd ~/winbuild; cd libsodium ; make -j4
@@ -142,10 +142,10 @@ dependencies:
     - cd ~/winbuild; cd opus ; ./autogen.sh
     - cd ~/winbuild; cd opus ;
       export TARGET_HOST="--host=x86_64-w64-mingw32" ;
-      export TARGET_TRGT="--target=x86_64-win32-gcc" ;
+      export TARGET_TRGT="--target=x86_64-win64-gcc" ;
       export CROSS="x86_64-w64-mingw32-" ;
-      export CFLAGS=" -g -O3 -I$CACHE_DIR/usr/include -I/usr/share/mingw-w64/include/ " ;
-      export CXXFLAGS=" -g -O3 -I$CACHE_DIR/usr/include -I/usr/share/mingw-w64/include/ " ;
+      export CFLAGS=" -g -O3 " ;
+      export CXXFLAGS=" -g -O3 " ;
       ./configure "$TARGET_HOST" --prefix=/home/ubuntu/win_cache/usr
       --disable-extra-programs --disable-doc
     - cd ~/winbuild; cd opus ; make -j4
@@ -155,14 +155,14 @@ dependencies:
     ### ------- compile and install libvpx -------
     - cd ~/winbuild; git clone https://github.com/webmproject/libvpx.git
     - cd ~/winbuild; cd libvpx ; git checkout "$LIBVPX_VERSION"
-    - cd ~/winbuild; cd libvpx ; ./autogen.sh
+    - cd ~/winbuild; cd libvpx ; ./autogen.sh ; exit 0 # sometime "configure" is already created
     - cd ~/winbuild; cd libvpx ;
       export TARGET_HOST="--host=x86_64-w64-mingw32" ;
-      export TARGET_TRGT="--target=x86_64-win32-gcc" ;
+      export TARGET_TRGT="--target=x86_64-win64-gcc" ;
       export CROSS="x86_64-w64-mingw32-" ;
-      export CFLAGS=" -g -O3 -I$CACHE_DIR/usr/include -I/usr/share/mingw-w64/include/ " ;
-      export CXXFLAGS=" -g -O3 -I$CACHE_DIR/usr/include -I/usr/share/mingw-w64/include/ " ;
-      CROSS=x86_64-w64-mingw32- ./configure "$TARGET_HOST"
+      export CFLAGS=" -g -O3 " ;
+      export CXXFLAGS=" -g -O3 " ;
+      CROSS=x86_64-w64-mingw32- ./configure "$TARGET_TRGT"
       --prefix=/home/ubuntu/win_cache/usr
       --enable-static
       --size-limit=16384x16384
