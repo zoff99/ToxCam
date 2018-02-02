@@ -180,27 +180,32 @@ dependencies:
     ### ------- compile and install c-toxcore -------
     - cd ~/winbuild; git clone "$CTOXCORE_URL"
     - cd ~/winbuild; cd c-toxcore ; git checkout "$CTOXCORE_VERSION_HASH"
+    - cd ~/winbuild; cd c-toxcore ; ./autogen.sh ; exit 0 # sometime "configure" is already created
     - cd ~/winbuild; cd c-toxcore ;
-      export CFLAGS=" -g -O3 " ;
-      export CXXFLAGS=" -g -O3 " ;
-      cmake -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc
-      -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++
-      -DCMAKE_RC_COMPILER=i686-w64-mingw32-windres
-      -DCMAKE_SYSTEM_NAME=Windows
-      -DCMAKE_FIND_ROOT_PATH=/home/ubuntu/win_cache
-      -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
-      -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY
-      -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY
-      -DCMAKE_INSTALL_PREFIX:PATH=/home/ubuntu/win_cache/usr
-      -DENABLE_SHARED=OFF
-      -DCOMPILE_AS_CXX=OFF
-      -DBOOTSTRAP_DAEMON=OFF
-      -B_build -H.
-    - cd ~/winbuild; cd c-toxcore ; make -C_build VERBOSE=1
+      export PKG_CONFIG_PATH="/home/ubuntu/win_cache/usr/lib/pkgconfig" ;
+      export TARGET_HOST="--host=x86_64-w64-mingw32" ;
+      export TARGET_TRGT="--target=x86_64-win64-gcc" ;
+      export CROSS="x86_64-w64-mingw32-" ;
+      export LIBSODIUM_CFLAGS=" -I/home/ubuntu/win_cache/usr/include/ "
+      export LIBSODIUM_LIBS=" -L/home/ubuntu/win_cache/usr/lib/ -lsodium "
+      export CFLAGS=" -g -O3 -I/home/ubuntu/win_cache/usr/include/ " ;
+      export CXXFLAGS=" -g -O3 -I/home/ubuntu/win_cache/usr/include/ " ;
+      CROSS=x86_64-w64-mingw32- ./configure "$TARGET_HOST" --prefix=/home/ubuntu/win_cache/usr
+     --with-libsodium-headers=/home/ubuntu/win_cache/usr/include/ --with-libsodium-libs=/home/ubuntu/win_cache/usr/lib/
+     --disable-soname-versions --disable-shared
+    - cd ~/winbuild; cd c-toxcore ; make VERBOSE=1 V=1
     - cd ~/winbuild; cd c-toxcore ; make install
     ### ------- compile and install c-toxcore -------
 
-    - cd ~/win_cache ; ls -alR
+    - cd ~/winbuild/ ; cp -av ~/Toxcam ./
+    - cd ~/winbuild/ToxCam/toxcam/ ;
+      gcc -O3 -g -Wall -o toxcam_static toxcam.c -static -std=gnu99 -L/usr/local/lib
+      -I/usr/local/include/ -lsodium -ltoxcore -ltoxav -ltoxgroup -ltoxmessenger -ltoxfriends
+      -ltoxnetcrypto -ltoxdht -ltoxnetwork -ltoxcrypto -lsodium -lpthread -static-libgcc -static-libstdc++
+      -lopus -lvpx -lm -lpthread -lv4lconvert -ljpeg -lm -lrt
+    - cd ~/winbuild/ToxCam/toxcam/ ; ls -al toxcam_static
+    - mkdir -p $CIRCLE_ARTIFACTS/win_binaries/
+    - cd ~/winbuild/ToxCam/toxcam/ ; cp -av toxcam_static $CIRCLE_ARTIFACTS/win_binaries/
     ### ----------- win compile -----------
 
 test:
