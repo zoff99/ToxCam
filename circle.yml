@@ -177,6 +177,29 @@ dependencies:
     - cd ~/winbuild; cd libvpx ; make install
     ### ------- compile and install libvpx -------
 
+    ### ------- compile and install c-toxcore -------
+    - cd ~/winbuild; git clone "$CTOXCORE_URL"
+    - cd ~/winbuild; cd c-toxcore ; git checkout "$CTOXCORE_VERSION_HASH"
+    - cd ~/winbuild; cd c-toxcore ;
+      export CFLAGS=" -g -O3 " ;
+      export CXXFLAGS=" -g -O3 " ;
+      cmake -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc
+      -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++
+      -DCMAKE_RC_COMPILER=i686-w64-mingw32-windres
+      -DCMAKE_SYSTEM_NAME=Windows
+      -DCMAKE_FIND_ROOT_PATH=/home/ubuntu/win_cache
+      -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER
+      -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY
+      -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY
+      -DCMAKE_INSTALL_PREFIX:PATH=/home/ubuntu/win_cache/usr
+      -DENABLE_SHARED=OFF
+      -DCOMPILE_AS_CXX=OFF
+      -DBOOTSTRAP_DAEMON=OFF
+      -B_build -H.
+    - cd ~/winbuild; cd c-toxcore ; make -C_build VERBOSE=1
+    - cd ~/winbuild; cd c-toxcore ; make install
+    ### ------- compile and install c-toxcore -------
+
     - cd ~/win_cache ; ls -alR
     ### ----------- win compile -----------
 
