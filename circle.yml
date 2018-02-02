@@ -203,7 +203,7 @@ dependencies:
       x86_64-w64-mingw32-gcc -O3 -g
       -L/home/ubuntu/win_cache/usr/lib
       -I/home/ubuntu/win_cache/usr/include/
-      -o toxcam.exe toxcam.c -std=gnu99
+      -o toxcam.exe toxcam.c rb.c -std=gnu99
       -lm
       -ltoxcore -ltoxav -ltoxdns -ltoxencryptsave
       -lws2_32 -liphlpapi
