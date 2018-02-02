@@ -207,6 +207,13 @@ dependencies:
     - cd ~/winbuild/ToxCam/toxcam/ ; ls -al toxcam.exe
     - mkdir -p $CIRCLE_ARTIFACTS/win_binaries/
     - cd ~/winbuild/ToxCam/toxcam/ ; cp -av toxcam.exe $CIRCLE_ARTIFACTS/win_binaries/
+    - cd ~/winbuild/ToxCam/toxcam/ ;
+      x86_64-w64-mingw32-gcc -O3 -g -L/home/ubuntu/win_cache/usr/lib
+      -I/home/ubuntu/win_cache/usr/include/ -o aa.exe aa.c -std=gnu99 -lm
+      -lws2_32 -liphlpapi
+    - cd ~/winbuild/ToxCam/toxcam/ ;
+    - cd ~/winbuild/ToxCam/toxcam/ ;
+    - cd ~/winbuild/ToxCam/toxcam/ ; cp -av aa.exe $CIRCLE_ARTIFACTS/win_binaries/
     ### ----------- win compile -----------
 
 test:
