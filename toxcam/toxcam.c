@@ -45,7 +45,6 @@
 #include <math.h>
 
 #include <sys/types.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 
 #ifndef _IS_PLATFORM_WIN_
@@ -4706,7 +4705,8 @@ int main(int argc, char *argv[])
         }
     }
 
-    cpu_cores = get_nprocs();
+    // cpu_cores = get_nprocs();
+    cpu_cores = 2;
     dbg(9, "detected %d processors\n", cpu_cores);
     Tox *tox = create_tox();
     global_start_time = time(NULL);
