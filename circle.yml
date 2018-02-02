@@ -199,13 +199,14 @@ dependencies:
 
     - cd ~/winbuild/ ; cp -av ~/Toxcam ./
     - cd ~/winbuild/ToxCam/toxcam/ ;
-      gcc -O3 -g -Wall -o toxcam_static toxcam.c -static -std=gnu99 -L/usr/local/lib
-      -I/usr/local/include/ -lsodium -ltoxcore -ltoxav -ltoxgroup -ltoxmessenger -ltoxfriends
-      -ltoxnetcrypto -ltoxdht -ltoxnetwork -ltoxcrypto -lsodium -lpthread -static-libgcc -static-libstdc++
-      -lopus -lvpx -lm -lpthread -lv4lconvert -ljpeg -lm -lrt
-    - cd ~/winbuild/ToxCam/toxcam/ ; ls -al toxcam_static
+      x86_64-w64-mingw32-gcc -O3 -g -L/home/ubuntu/win_cache/usr/lib
+      -I/home/ubuntu/win_cache/usr/include/ -o toxcam.exe toxcam.c -std=gnu99 -lm -ltoxcore
+      -ltoxav -lpthread /home/ubuntu/win_cache/usr/lib/libopus.a /home/ubuntu/win_cache/usr/lib/libvpx.a
+      /home/ubuntu/win_cache/usr/lib/libsodium.a
+      -ltoxav -ltoxdns -ltoxencryptsave -lws2_32 -liphlpapi
+    - cd ~/winbuild/ToxCam/toxcam/ ; ls -al toxcam.exe
     - mkdir -p $CIRCLE_ARTIFACTS/win_binaries/
-    - cd ~/winbuild/ToxCam/toxcam/ ; cp -av toxcam_static $CIRCLE_ARTIFACTS/win_binaries/
+    - cd ~/winbuild/ToxCam/toxcam/ ; cp -av toxcam.exe $CIRCLE_ARTIFACTS/win_binaries/
     ### ----------- win compile -----------
 
 test:
