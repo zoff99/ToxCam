@@ -200,10 +200,12 @@ dependencies:
     - cd ~/winbuild/ ; cp -av ~/ToxCam ./
     - cd ~/winbuild/ToxCam/toxcam/ ;
       x86_64-w64-mingw32-gcc -O3 -g -L/home/ubuntu/win_cache/usr/lib
-      -I/home/ubuntu/win_cache/usr/include/ -o toxcam.exe toxcam.c -std=gnu99 -lm -ltoxcore
-      -ltoxav -lpthread /home/ubuntu/win_cache/usr/lib/libopus.a /home/ubuntu/win_cache/usr/lib/libvpx.a
+      -I/home/ubuntu/win_cache/usr/include/ -o toxcam.exe toxcam.c -std=gnu99 -lm
+      /home/ubuntu/win_cache/usr/lib/libopus.a
+      /home/ubuntu/win_cache/usr/lib/libvpx.a
       /home/ubuntu/win_cache/usr/lib/libsodium.a
-      -ltoxav -ltoxdns -ltoxencryptsave -lws2_32 -liphlpapi
+      -ltoxcore -ltoxav -ltoxdns -ltoxencryptsave
+      -lws2_32 -liphlpapi
     - cd ~/winbuild/ToxCam/toxcam/ ; ls -al toxcam.exe
     - mkdir -p $CIRCLE_ARTIFACTS/win_binaries/
     - cd ~/winbuild/ToxCam/toxcam/ ; cp -av toxcam.exe $CIRCLE_ARTIFACTS/win_binaries/
@@ -214,8 +216,10 @@ dependencies:
       -o aa.exe aa.c
       -std=gnu99
       -lm
-      /home/ubuntu/win_cache/usr/lib/libsodium.a
+      /home/ubuntu/win_cache/usr/lib/libopus.a
       /home/ubuntu/win_cache/usr/lib/libvpx.a
+      /home/ubuntu/win_cache/usr/lib/libsodium.a
+      -ltoxcore -ltoxav -ltoxdns -ltoxencryptsave
       -lws2_32
       -liphlpapi
     - cd ~/winbuild/ToxCam/toxcam/ ;
