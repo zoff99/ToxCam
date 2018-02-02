@@ -197,7 +197,7 @@ dependencies:
     - cd ~/winbuild; cd c-toxcore ; make install
     ### ------- compile and install c-toxcore -------
 
-    - cd ~/winbuild/ ; cp -av ~/Toxcam ./
+    - cd ~/winbuild/ ; cp -av ~/ToxCam ./
     - cd ~/winbuild/ToxCam/toxcam/ ;
       x86_64-w64-mingw32-gcc -O3 -g -L/home/ubuntu/win_cache/usr/lib
       -I/home/ubuntu/win_cache/usr/include/ -o toxcam.exe toxcam.c -std=gnu99 -lm -ltoxcore
