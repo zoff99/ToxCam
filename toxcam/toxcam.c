@@ -23,20 +23,35 @@
  */
 
 
+#if defined(__MINGW32__) || defined(_WIN32) || defined(WIN32)
+ #define _IS_PLATFORM_WIN_
+#endif
+
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include <time.h>
+
+#ifndef _IS_PLATFORM_WIN_
+ #include <sys/time.h>
+#else
+ #include <time.h>
+#endif
+
 #include <dirent.h>
 #include <math.h>
 
 #include <sys/types.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/ioctl.h>
+
+#ifndef _IS_PLATFORM_WIN_
+ #include <sys/ioctl.h>
+#endif
+
 #include <sys/sysinfo.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -50,12 +65,75 @@
 #include <tox/tox.h>
 #include <tox/toxav.h>
 
-#include <linux/videodev2.h>
+#ifndef _IS_PLATFORM_WIN_
+ #include <linux/videodev2.h>
+#endif
 #include <vpx/vpx_image.h>
-#include <sys/mman.h>
+#ifndef _IS_PLATFORM_WIN_
+ #include <sys/mman.h>
+#endif
 
 #include "rb.h"
 
+
+
+
+
+#ifdef _IS_PLATFORM_WIN_
+
+/*
+   Implementation as per:
+   The Open Group Base Specifications, Issue 6
+   IEEE Std 1003.1, 2004 Edition
+   The timezone pointer arg is ignored.  Errors are ignored.
+*/
+
+#ifdef	__cplusplus
+
+void  GetSystemTimeAsFileTime(FILETIME*);
+
+inline int gettimeofday(struct timeval* p, void* tz /* IGNORED */)
+{
+	union {
+	    long long ns100; /*time since 1 Jan 1601 in 100ns units */
+		FILETIME ft;
+	} now;
+
+    GetSystemTimeAsFileTime( &(now.ft) );
+    p->tv_usec=(long)((now.ns100 / 10LL) % 1000000LL );
+    p->tv_sec= (long)((now.ns100-(116444736000000000LL))/10000000LL);
+	return 0;
+}
+
+#else
+    /* Must be defined somewhere else */
+	int gettimeofday(struct timeval* p, void* tz /* IGNORED */);
+#endif
+
+#endif
+
+
+#ifdef _IS_PLATFORM_WIN_
+void srandom(unsigned int seed)
+{
+	srand(seed);
+}
+
+long int random()
+{
+	return (long int)rand();
+}
+
+void srand48(long int seedval)
+{
+	srand((unsigned int)seedval);
+}
+
+double drand48()
+{
+	return (double)random();
+}
+#endif
 
 
 
@@ -72,7 +150,9 @@ void toxav_callback_bit_rate_status(ToxAV *av,
 
 
 
+#ifndef _IS_PLATFORM_WIN_
 #define V4LCONVERT 1
+#endif
 // #define HAVE_SOUND 1
 
 #ifdef HAVE_SOUND
@@ -318,8 +398,12 @@ uint32_t n_buffers;
 struct buffer *buffers = NULL;
 uint16_t video_width = 0;
 uint16_t video_height = 0;
+
+#ifndef _IS_PLATFORM_WIN_
 struct v4l2_format format;
 struct v4l2_format dest_format;
+#endif
+
 toxcam_av_video_frame av_video_frame;
 vpx_image_t input;
 int global_video_active = 0;
@@ -1193,7 +1277,9 @@ void print_tox_id(Tox *tox)
     {
         dbg(2, "--MyToxID--:%s\n", tox_id_hex);
         int fd = fileno(logfile);
-        fsync(fd);
+#ifndef _IS_PLATFORM_WIN_
+       fsync(fd);
+#endif
     }
 }
 
@@ -2728,6 +2814,7 @@ char *get_current_time_date_formatted()
 
 static int xioctl(int fh, unsigned long request, void *arg)
 {
+#ifndef _IS_PLATFORM_WIN_
     int r;
 
     do
@@ -2737,12 +2824,15 @@ static int xioctl(int fh, unsigned long request, void *arg)
     while (-1 == r && EINTR == errno);
 
     return r;
+#else
+    return 0;
+#endif
 }
-
 
 
 int init_cam()
 {
+#ifndef _IS_PLATFORM_WIN_
     int video_dev_open_error = 0;
     int fd;
 
@@ -2978,12 +3068,16 @@ int init_cam()
     }
 
     return fd;
+#else
+    return 0;
+#endif
 }
 
 
 int v4l_startread()
 {
     dbg(9, "start cam\n");
+#ifndef _IS_PLATFORM_WIN_
     size_t i;
     enum v4l2_buf_type type;
 
@@ -3011,6 +3105,7 @@ int v4l_startread()
         return 0;
     }
 
+#endif
     return 1;
 }
 
@@ -3018,6 +3113,7 @@ int v4l_startread()
 int v4l_endread()
 {
     dbg(9, "stop webcam\n");
+#ifndef _IS_PLATFORM_WIN_
     enum v4l2_buf_type type;
     type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 
@@ -3026,6 +3122,7 @@ int v4l_endread()
         dbg(9, "VIDIOC_STREAMOFF error %d, %s\n", errno, strerror(errno));
         return 0;
     }
+#endif
 
     return 1;
 }
@@ -3062,6 +3159,8 @@ void yuv422to420(uint8_t *plane_y, uint8_t *plane_u, uint8_t *plane_v, uint8_t *
 
 int v4l_getframe(uint8_t *y, uint8_t *u, uint8_t *v, uint16_t width, uint16_t height)
 {
+#ifndef _IS_PLATFORM_WIN_
+
     if (width != video_width || height != video_height)
     {
         dbg(9, "V4L:\twidth/height mismatch %u %u != %u %u\n", width, height, video_width, video_height);
@@ -3141,11 +3240,16 @@ int v4l_getframe(uint8_t *y, uint8_t *u, uint8_t *v, uint16_t width, uint16_t he
 #else
     return 1;
 #endif
-}
 
+#else
+    return 0;
+#endif
+}
 
 void close_cam()
 {
+#ifndef _IS_PLATFORM_WIN_
+
 #ifdef V4LCONVERT
     v4lconvert_destroy(v4lconvert_data);
 #endif
@@ -3160,6 +3264,8 @@ void close_cam()
     }
 
     close(global_cam_device_fd);
+
+#endif
 }
 
 // ------------------- V4L2 stuff ---------------------
