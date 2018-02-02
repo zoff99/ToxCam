@@ -357,7 +357,7 @@ const char *shell_cmd__get_cpu_temp = "./scripts/get_cpu_temp.sh 2> /dev/null";
 const char *shell_cmd__get_gpu_temp = "./scripts/get_gpu_temp.sh 2> /dev/null";
 const char *shell_cmd__get_my_number_of_open_files = "cat /proc/sys/fs/file-nr 2> /dev/null";
 const char *shell_cmd__get_video_fps = "./scripts/get_video_fps.sh 2> /dev/null";
-const char *shell_cmd__get_video_fps_win = ".\scripts\get_video_fps.bat 2> NIL";
+const char *shell_cmd__get_video_fps_win = ".\scripts\get_video_fps.bat 2> NUL";
 int global_want_restart = 0;
 const char *global_timestamp_format = "%H:%M:%S";
 const char *global_long_timestamp_format = "%Y-%m-%d %H:%M:%S";
@@ -3565,7 +3565,7 @@ void *thread_av(void *data)
 
 #ifdef _IS_PLATFORM_WIN_
     snprintf(cmd, sizeof(cmd),
-             "ffmpeg.exe -y -hide_banner -nostats -i %s -threads %d -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s - ",
+             "ffmpeg.exe -y -hide_banner -nostats -i %s -threads %d -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s - < NUL",
              input_video_file, cpu_cores, "yuv420p");
 #else
     snprintf(cmd, sizeof(cmd),
@@ -3941,7 +3941,7 @@ void *thread_audio_av(void *data)
 #if 1
 #ifdef _IS_PLATFORM_WIN_
     snprintf(cmd, sizeof(cmd),
-             "ffmpeg.exe -y -hide_banner -nostats -i %s -threads %d -acodec pcm_s16le -f s16le -ac %d -ar %d - ",
+             "ffmpeg.exe -y -hide_banner -nostats -i %s -threads %d -acodec pcm_s16le -f s16le -ac %d -ar %d - < NUL",
              input_video_file, cpu_cores, gen_channels, gen_sampling_rate);
 #else
     snprintf(cmd, sizeof(cmd),
