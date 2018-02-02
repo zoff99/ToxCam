@@ -63,7 +63,13 @@ static const char global_version_string[] = "0.99.14";
 int main(int argc, char *argv[])
 {
   printf("AAA:001\n");
+	
+  uint8_t tox_id_bin[64];
+  char tox_id_hex_local[64 * 2 + 1];
+  sodium_bin2hex(tox_id_hex_local, sizeof(tox_id_hex_local), tox_id_bin, sizeof(tox_id_bin));
 
+  printf("AAA:002\n");
+	
   return 0;
 }
 
