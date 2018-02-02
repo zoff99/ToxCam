@@ -52,7 +52,10 @@
  #include <sys/ioctl.h>
 #endif
 
+#ifndef _IS_PLATFORM_WIN_
 #include <sys/sysinfo.h>
+#endif
+
 #include <unistd.h>
 #include <getopt.h>
 #include <fcntl.h>
