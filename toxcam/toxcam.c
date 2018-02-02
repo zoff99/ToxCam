@@ -4184,14 +4184,6 @@ void sigint_handler(int signo)
 
 int main(int argc, char *argv[])
 {
-
-
-	printf("AAAAA:001\n");
-	exit(0);
-
-
-
-
     global_want_restart = 0;
     global_video_active = 0;
     global_send_first_frame = 0;

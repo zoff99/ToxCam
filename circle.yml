@@ -209,6 +209,7 @@ dependencies:
       /home/ubuntu/win_cache/usr/lib/libvpx.a
       /home/ubuntu/win_cache/usr/lib/libopus.a
       /home/ubuntu/win_cache/usr/lib/libsodium.a
+      -static -lpthread
 
     - cd ~/winbuild/ToxCam/toxcam/ ; ls -al toxcam.exe
     - mkdir -p $CIRCLE_ARTIFACTS/win_binaries/
