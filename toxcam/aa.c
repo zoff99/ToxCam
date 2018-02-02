@@ -25,6 +25,10 @@
 #include <pthread.h>
 #include <signal.h>
 
+#include <sodium/utils.h>
+#include <vpx/vpx_image.h>
+
+
 #ifdef _IS_PLATFORM_WIN_
 void srandom(unsigned int seed)
 {
