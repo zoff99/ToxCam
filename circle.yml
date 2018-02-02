@@ -38,12 +38,14 @@ machine:
     # ---------------------------------------------------
     # c-toxcore version used
     # CTOXCORE_VERSION_HASH: master
-    CTOXCORE_VERSION_HASH: "zoff99/_0.1.10_2017_video_fix_03"
+    CTOXCORE_VERSION_HASH: "zoff99/_0.1.10_2017_video_fix_08"
     # c-toxcore repo used
     # CTOXCORE_URL: "https://github.com/TokTok/c-toxcore"
     CTOXCORE_URL: "https://github.com/zoff99/c-toxcore"
     LIBSODIUM_VERSION: "tags/1.0.13"
     LIBSODIUM_BRANCH: "1.0.13"
+    OPUS_VERSION: "1.1.2"
+    LIBVPX_VERSION: "v1.7.0"
     RASPBERRRY_TOOLS_HASH: d820ab9c21969013b4e56c7e9cba25518afcdd44
     
 dependencies:
@@ -63,11 +65,16 @@ dependencies:
     - sudo apt-get install libjpeg-dev
     - sudo apt-get install libpulse-dev
     - sudo apt-get install libconfig-dev
+    - sudo apt-get install -y --no-install-recommends
+      g++-mingw-w64-x86-64
+      gcc-mingw-w64-x86-64
+    - sudo apt-get install mingw-w64-tools binutils-mingw-w64-x86-64
 
     - sudo bash -c "echo '::1             localhost ipv6-localhost ipv6-loopback' >> /etc/hosts" # ipv6 localhost entry
 
     - gcc --version ; exit 0
     - clang --version ; exit 0
+    - gcc-mingw-w64-x86-64 --version ; exit 0
 
     ### submodules ----------------
     - git submodule add --force https://github.com/TokTok/c-toxcore c-toxcore ; echo ok
@@ -112,6 +119,103 @@ dependencies:
     ### ------------ compile and install c-toxcore ------------
 
 
+
+
+    ### ----------- win compile -----------
+    - cd ~/ ; mkdir winbuild
+    - cd ~/ ; mkdir win_cache
+    ### ------- compile and install libsodium -------
+    - cd ~/winbuild; git clone https://github.com/jedisct1/libsodium.git
+    - cd ~/winbuild; cd libsodium ; git checkout "$LIBSODIUM_BRANCH"
+    - cd ~/winbuild; cd libsodium ; ./autogen.sh
+    - cd ~/winbuild; cd libsodium ;
+      export TARGET_HOST="--host=x86_64-w64-mingw32" ;
+      export TARGET_TRGT="--target=x86_64-win64-gcc" ;
+      export CROSS="x86_64-w64-mingw32-" ;
+      ./configure "$TARGET_HOST" --prefix=/home/ubuntu/win_cache/usr
+    - cd ~/winbuild; cd libsodium ; make -j4
+    - cd ~/winbuild; cd libsodium ; make install
+    ### ------- compile and install libsodium -------
+
+    ### ------- compile and install opus -------
+    - cd ~/winbuild; git clone https://github.com/xiph/opus
+    - cd ~/winbuild; cd opus ; git checkout "$OPUS_VERSION"
+    - cd ~/winbuild; cd opus ; ./autogen.sh
+    - cd ~/winbuild; cd opus ;
+      export TARGET_HOST="--host=x86_64-w64-mingw32" ;
+      export TARGET_TRGT="--target=x86_64-win64-gcc" ;
+      export CROSS="x86_64-w64-mingw32-" ;
+      export CFLAGS=" -g -O3 " ;
+      export CXXFLAGS=" -g -O3 " ;
+      ./configure "$TARGET_HOST" --prefix=/home/ubuntu/win_cache/usr
+      --disable-extra-programs --disable-doc
+    - cd ~/winbuild; cd opus ; make -j4
+    - cd ~/winbuild; cd opus ; make install
+    ### ------- compile and install opus -------
+
+    ### ------- compile and install libvpx -------
+    - cd ~/winbuild; git clone https://github.com/webmproject/libvpx.git
+    - cd ~/winbuild; cd libvpx ; git checkout "$LIBVPX_VERSION"
+    - cd ~/winbuild; cd libvpx ; ./autogen.sh ; exit 0 # sometime "configure" is already created
+    - cd ~/winbuild; cd libvpx ;
+      export TARGET_HOST="--host=x86_64-w64-mingw32" ;
+      export TARGET_TRGT="--target=x86_64-win64-gcc" ;
+      export CROSS="x86_64-w64-mingw32-" ;
+      export CFLAGS=" -g -O3 " ;
+      export CXXFLAGS=" -g -O3 " ;
+      CROSS=x86_64-w64-mingw32- ./configure "$TARGET_TRGT"
+      --prefix=/home/ubuntu/win_cache/usr
+      --enable-static
+      --size-limit=16384x16384
+      --disable-shared
+      --disable-unit-tests
+      --enable-postproc
+      --enable-multi-res-encoding
+      --enable-temporal-denoising
+      --enable-vp9-temporal-denoising
+      --enable-vp9-postproc
+    - cd ~/winbuild; cd libvpx ; make -j4
+    - cd ~/winbuild; cd libvpx ; make install
+    ### ------- compile and install libvpx -------
+
+    ### ------- compile and install c-toxcore -------
+    - cd ~/winbuild; git clone "$CTOXCORE_URL"
+    - cd ~/winbuild; cd c-toxcore ; git checkout "$CTOXCORE_VERSION_HASH"
+    - cd ~/winbuild; cd c-toxcore ; ./autogen.sh ; exit 0 # sometime "configure" is already created
+    - cd ~/winbuild; cd c-toxcore ;
+      export PKG_CONFIG_PATH="/home/ubuntu/win_cache/usr/lib/pkgconfig" ;
+      export TARGET_HOST="--host=x86_64-w64-mingw32" ;
+      export TARGET_TRGT="--target=x86_64-win64-gcc" ;
+      export CROSS="x86_64-w64-mingw32-" ;
+      export LIBSODIUM_CFLAGS=" -I/home/ubuntu/win_cache/usr/include/ "
+      export LIBSODIUM_LIBS=" -L/home/ubuntu/win_cache/usr/lib/ -lsodium "
+      export CFLAGS=" -g -O3 -I/home/ubuntu/win_cache/usr/include/ " ;
+      export CXXFLAGS=" -g -O3 -I/home/ubuntu/win_cache/usr/include/ " ;
+      CROSS=x86_64-w64-mingw32- ./configure "$TARGET_HOST" --prefix=/home/ubuntu/win_cache/usr
+     --with-libsodium-headers=/home/ubuntu/win_cache/usr/include/ --with-libsodium-libs=/home/ubuntu/win_cache/usr/lib/
+     --disable-soname-versions --disable-shared
+    - cd ~/winbuild; cd c-toxcore ; make VERBOSE=1 V=1
+    - cd ~/winbuild; cd c-toxcore ; make install
+    ### ------- compile and install c-toxcore -------
+
+    - cd ~/winbuild/ ; cp -av ~/ToxCam ./
+    - cd ~/winbuild/ToxCam/toxcam/ ;
+      x86_64-w64-mingw32-gcc -O3 -g
+      -L/home/ubuntu/win_cache/usr/lib
+      -I/home/ubuntu/win_cache/usr/include/
+      -o toxcam.exe toxcam.c -std=gnu99
+      -lm
+      -ltoxcore -ltoxav -ltoxdns -ltoxencryptsave
+      -lws2_32 -liphlpapi
+      /home/ubuntu/win_cache/usr/lib/libvpx.a
+      /home/ubuntu/win_cache/usr/lib/libopus.a
+      /home/ubuntu/win_cache/usr/lib/libsodium.a
+      -static -lpthread
+
+    - cd ~/winbuild/ToxCam/toxcam/ ; ls -al toxcam.exe
+    - mkdir -p $CIRCLE_ARTIFACTS/win_binaries/
+    - cd ~/winbuild/ToxCam/toxcam/ ; cp -av toxcam.exe $CIRCLE_ARTIFACTS/win_binaries/
+    ### ----------- win compile -----------
 
 test:
   override:
