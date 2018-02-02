@@ -357,6 +357,7 @@ const char *shell_cmd__get_cpu_temp = "./scripts/get_cpu_temp.sh 2> /dev/null";
 const char *shell_cmd__get_gpu_temp = "./scripts/get_gpu_temp.sh 2> /dev/null";
 const char *shell_cmd__get_my_number_of_open_files = "cat /proc/sys/fs/file-nr 2> /dev/null";
 const char *shell_cmd__get_video_fps = "./scripts/get_video_fps.sh 2> /dev/null";
+const char *shell_cmd__get_video_fps_win = ".\scripts\get_video_fps.bat 2> NIL";
 int global_want_restart = 0;
 const char *global_timestamp_format = "%H:%M:%S";
 const char *global_long_timestamp_format = "%Y-%m-%d %H:%M:%S";
@@ -3494,9 +3495,16 @@ void *thread_av(void *data)
     char cmd[1000];
     char output_str[1000];
     CLEAR(cmd);
+
+#ifdef _IS_PLATFORM_WIN_
+    snprintf(cmd, sizeof(cmd),
+             "ffprobe.exe -v error -of flat=s=_ -select_streams v:0 -show_entries stream=width %s",
+             input_video_file);
+#else
     snprintf(cmd, sizeof(cmd),
              "ffprobe -v error -of flat=s=_ -select_streams v:0 -show_entries stream=width %s",
              input_video_file);
+#endif
     CLEAR(output_str);
     run_cmd_return_output(cmd, output_str, 1);
     dbg(9, "Video:res=%s\n", output_str);
@@ -3507,9 +3515,15 @@ void *thread_av(void *data)
     }
 
     CLEAR(cmd);
+#ifdef _IS_PLATFORM_WIN_
+    snprintf(cmd, sizeof(cmd),
+             "ffprobe.exe -v error -of flat=s=_ -select_streams v:0 -show_entries stream=height %s",
+             input_video_file);
+#else
     snprintf(cmd, sizeof(cmd),
              "ffprobe -v error -of flat=s=_ -select_streams v:0 -show_entries stream=height %s",
              input_video_file);
+#endif
     CLEAR(output_str);
     run_cmd_return_output(cmd, output_str, 1);
     dbg(9, "Video:res=%s\n", output_str);
@@ -3521,7 +3535,11 @@ void *thread_av(void *data)
 
     dbg(9, "Video:width=%d height=%d\n", ww, hh);
     CLEAR(output_str);
+#ifdef _IS_PLATFORM_WIN_
+    run_cmd_return_output(shell_cmd__get_video_fps_win, output_str, 1);
+#else
     run_cmd_return_output(shell_cmd__get_video_fps, output_str, 1);
+#endif
 
     if (strlen(output_str) > 0)
     {
@@ -3544,9 +3562,16 @@ void *thread_av(void *data)
     int read_bytes = 0;
     CLEAR(cmd);
 #if 1
+
+#ifdef _IS_PLATFORM_WIN_
+    snprintf(cmd, sizeof(cmd),
+             "ffmpeg.exe -y -hide_banner -nostats -i %s -threads %d -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s - ",
+             input_video_file, cpu_cores, "yuv420p");
+#else
     snprintf(cmd, sizeof(cmd),
              "ffmpeg -y -hide_banner -nostats -i %s -threads %d -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s - </dev/null",
              input_video_file, cpu_cores, "yuv420p");
+#endif
 #else
     snprintf(cmd, sizeof(cmd),
              "ffmpeg -y -hide_banner -nostats -i %s -threads %d -vf showinfo -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s - 2> %s",
@@ -3914,9 +3939,15 @@ void *thread_audio_av(void *data)
     char cmd[1000];
     CLEAR(cmd);
 #if 1
+#ifdef _IS_PLATFORM_WIN_
+    snprintf(cmd, sizeof(cmd),
+             "ffmpeg.exe -y -hide_banner -nostats -i %s -threads %d -acodec pcm_s16le -f s16le -ac %d -ar %d - ",
+             input_video_file, cpu_cores, gen_channels, gen_sampling_rate);
+#else
     snprintf(cmd, sizeof(cmd),
              "ffmpeg -y -hide_banner -nostats -i %s -threads %d -acodec pcm_s16le -f s16le -ac %d -ar %d - </dev/null",
              input_video_file, cpu_cores, gen_channels, gen_sampling_rate);
+#endif
 #else
     snprintf(cmd, sizeof(cmd),
              "ffmpeg -y -hide_banner -nostats -i %s -threads %d -af ashowinfo -acodec pcm_s16le -f s16le -ac %d -ar %d - 2> %s",
