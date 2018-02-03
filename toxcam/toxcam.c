@@ -865,6 +865,18 @@ void replace_bad_char_from_string(char *str, const char replace_with)
 
 void update_savedata_file(const Tox *tox)
 {
+#ifdef _IS_PLATFORM_WIN_
+    size_t size = tox_get_savedata_size(tox);
+    char *savedata = malloc(size);
+    tox_get_savedata(tox, (uint8_t *)savedata);
+
+    unlink(savedata_filename);
+
+    FILE *f = fopen(savedata_filename, "wb");
+    fwrite(savedata, size, 1, f);
+    fclose(f);
+    free(savedata);
+#else
     size_t size = tox_get_savedata_size(tox);
     char *savedata = malloc(size);
     tox_get_savedata(tox, (uint8_t *)savedata);
@@ -873,6 +885,7 @@ void update_savedata_file(const Tox *tox)
     fclose(f);
     rename(savedata_tmp_filename, savedata_filename);
     free(savedata);
+#endif
 }
 
 off_t file_size(const char *path)
