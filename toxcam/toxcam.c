@@ -3578,7 +3578,7 @@ void *thread_av(void *data)
 
 #ifdef _IS_PLATFORM_WIN_
     snprintf(cmd, sizeof(cmd),
-             "ffmpeg.exe -y -hide_banner -nostats -i %s -threads %d -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s - < NUL 2>NUL",
+             "ffmpeg.exe -y -hide_banner -nostats -i %s -threads %d -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s pipe:1 < NUL \n",
              input_video_file, cpu_cores, "yuv420p");
 #else
     snprintf(cmd, sizeof(cmd),
@@ -3954,7 +3954,7 @@ void *thread_audio_av(void *data)
 #if 1
 #ifdef _IS_PLATFORM_WIN_
     snprintf(cmd, sizeof(cmd),
-             "ffmpeg.exe -y -hide_banner -nostats -i %s -threads %d -acodec pcm_s16le -f s16le -ac %d -ar %d - < NUL 2>NUL",
+             "ffmpeg.exe -y -hide_banner -nostats -i %s -threads %d -acodec pcm_s16le -f s16le -ac %d -ar %d pipe:1 < NUL \n",
              input_video_file, cpu_cores, gen_channels, gen_sampling_rate);
 #else
     snprintf(cmd, sizeof(cmd),
