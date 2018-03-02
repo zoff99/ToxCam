@@ -37,12 +37,12 @@ machine:
     # c-toxcore v0.1.2 a096c71db867ac83fc3e01e0fbe98573d20f9286
     # ---------------------------------------------------
     # c-toxcore version used
-    CTOXCORE_VERSION_HASH: "zoff99/_0.1.10_2017_video_fix_07a"
+    CTOXCORE_VERSION_HASH: "zoff99/_0.1.10_2017_video_fix_09"
     # c-toxcore repo used
     # CTOXCORE_URL: "https://github.com/TokTok/c-toxcore"
     CTOXCORE_URL: "https://github.com/zoff99/c-toxcore"
-    LIBSODIUM_VERSION: "tags/1.0.13"
-    LIBSODIUM_BRANCH: "1.0.13"
+    LIBSODIUM_VERSION: "tags/1.0.16"
+    LIBSODIUM_BRANCH: "1.0.16"
     RASPBERRRY_TOOLS_HASH: d820ab9c21969013b4e56c7e9cba25518afcdd44
     
 dependencies:
@@ -160,11 +160,13 @@ dependencies:
     - . ~/pp;cd $_s_/yasm/;autoreconf -fi
     - . ~/pp;~/do_compile.sh "yasm" --prefix="$_SYSROOT_"/usr --disable-shared --disable-soname-versions --with-sysroot="$_SYSROOT_" --host="$_HOST_" --target="$_TARGET_"
 
-    - . ~/pp;cd $_s_;git clone --depth=1 --branch=v1.6.1 https://github.com/webmproject/libvpx.git
-    - . ~/pp;export CFLAGS=" -g -O3 ";export CROSS="arm-linux-gnueabihf-" ; ~/do_compile.sh "libvpx" --prefix="$_SYSROOT_"/usr --disable-examples --disable-unit-tests --target=generic-gnu --extra-cflags="--sysroot=$_SYSROOT_"
-    - . ~/pp;export CFLAGS=" -g -O3 ";export CROSS="arm-linux-gnueabihf-" ; ~/do_package.sh "libvpx" --prefix="$INSTALL_DEST"/usr --disable-examples --disable-unit-tests --target=generic-gnu --extra-cflags="--sysroot=$_SYSROOT_"
+    - . ~/pp;cd $_s_;git clone --depth=1 --branch=v1.7.0 https://github.com/webmproject/libvpx.git
+    - . ~/pp;export CFLAGS=" -g -O3 ";export CROSS="arm-linux-gnueabihf-" ; ~/do_compile.sh "libvpx"
+        --prefix="$_SYSROOT_"/usr --disable-examples --disable-unit-tests --target=generic-gnu --extra-cflags="--sysroot=$_SYSROOT_"
+    - . ~/pp;export CFLAGS=" -g -O3 ";export CROSS="arm-linux-gnueabihf-" ; ~/do_package.sh "libvpx" --prefix="$INSTALL_DEST"/usr
+        --disable-examples --disable-unit-tests --target=generic-gnu --extra-cflags="--sysroot=$_SYSROOT_"
 
-    - . ~/pp;cd $_s_;git clone --depth=1 --branch=v1.2.1 https://github.com/xiph/opus.git
+    - . ~/pp;cd $_s_;git clone --depth=1 --branch=v1.3-beta https://github.com/xiph/opus.git
     - . ~/pp;cd $_s_/opus/;autoreconf -fi
     - . ~/pp;export CFLAGS=" -g -O3 ";~/do_compile.sh "opus" --prefix="$_SYSROOT_"/usr --disable-shared --disable-soname-versions --target="$_TOOL_PREFIX" --with-sysroot="$_SYSROOT_" --host="$_TOOL_PREFIX"
     - . ~/pp;export CFLAGS=" -g -O3 ";~/do_package.sh "opus" --prefix="$INSTALL_DEST"/usr --disable-shared --disable-soname-versions --target="$_TOOL_PREFIX" --with-sysroot="$_SYSROOT_" --host="$_TOOL_PREFIX"
