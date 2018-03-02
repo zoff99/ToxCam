@@ -156,9 +156,9 @@ dependencies:
     - cat ~/do_package.sh
 
 
-    - . ~/pp;cd $_s_;git clone --depth=1 --branch=v1.3.0 https://github.com/yasm/yasm.git
-    - . ~/pp;cd $_s_/yasm/;autoreconf -fi
-    - . ~/pp;~/do_compile.sh "yasm" --prefix="$_SYSROOT_"/usr --disable-shared --disable-soname-versions --with-sysroot="$_SYSROOT_" --host="$_HOST_" --target="$_TARGET_"
+    #- . ~/pp;cd $_s_;git clone --depth=1 --branch=v1.3.0 https://github.com/yasm/yasm.git
+    #- . ~/pp;cd $_s_/yasm/;autoreconf -fi
+    #- . ~/pp;~/do_compile.sh "yasm" --prefix="$_SYSROOT_"/usr --disable-shared --disable-soname-versions --with-sysroot="$_SYSROOT_" --host="$_HOST_" --target="$_TARGET_"
 
     - . ~/pp;cd $_s_;git clone --depth=1 --branch=v1.7.0 https://github.com/webmproject/libvpx.git
     - . ~/pp;export CFLAGS=" -g -O3 ";export CROSS="arm-linux-gnueabihf-" ; ~/do_compile.sh "libvpx"
@@ -173,8 +173,12 @@ dependencies:
 
     - . ~/pp;cd $_s_;git clone --depth=1 --branch=$LIBSODIUM_BRANCH https://github.com/jedisct1/libsodium.git
     - . ~/pp;cd $_s_/libsodium/;autoreconf -fi
-    - . ~/pp;export CFLAGS=" -g -O3 ";~/do_compile.sh "libsodium" --prefix="$_SYSROOT_"/usr --disable-shared --disable-soname-versions --target="$_TOOL_PREFIX" --with-sysroot="$_SYSROOT_" --host="$_TOOL_PREFIX" --enable-minimal --disable-pie
-    - . ~/pp;export CFLAGS=" -g -O3 ";~/do_package.sh "libsodium" --prefix="$INSTALL_DEST"/usr --disable-shared --disable-soname-versions --target="$_TOOL_PREFIX" --with-sysroot="$_SYSROOT_" --host="$_TOOL_PREFIX" --enable-minimal --disable-pie
+    - . ~/pp;export CFLAGS=" -g -O3 ";~/do_compile.sh "libsodium" --prefix="$_SYSROOT_"/usr
+        --disable-shared --disable-soname-versions --target="$_TOOL_PREFIX" --with-sysroot="$_SYSROOT_"
+        --host="$_TOOL_PREFIX" --disable-pie
+    - . ~/pp;export CFLAGS=" -g -O3 ";~/do_package.sh "libsodium" --prefix="$INSTALL_DEST"/usr
+        --disable-shared --disable-soname-versions --target="$_TOOL_PREFIX" --with-sysroot="$_SYSROOT_"
+        --host="$_TOOL_PREFIX" --disable-pie
 
     # install raspi binary pkgs -------------------------
     - wget 'https://github.com/zoff99/raspi_cross_compile/raw/master/bin_packages/libv4l-dev.tgz' -O ~/pkg2.tgz
