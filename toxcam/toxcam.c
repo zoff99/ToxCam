@@ -155,6 +155,7 @@ typedef struct DHT_node
 #define AUTO_RESEND_SECONDS 60*5 // resend for this much seconds before asking again [5 min]
 #define VIDEO_BUFFER_COUNT 3
 uint32_t DEFAULT_GLOBAL_VID_BITRATE = 2500; // kbit/sec
+#define RC_MAX_QUANTIZER 50; // valid values between 10 - 56
 #define DEFAULT_GLOBAL_AUD_BITRATE 6 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_VID_BITRATE 1000 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
@@ -3130,7 +3131,7 @@ static void t_toxav_call_state_cb(ToxAV *av, uint32_t friend_number, uint32_t st
 
 
     TOXAV_ERR_OPTION_SET error2;
-    toxav_option_set(av, friend_number, TOXAV_ENCODER_RC_MAX_QUANTIZER, (int32_t)38, &error2);
+    toxav_option_set(av, friend_number, TOXAV_ENCODER_RC_MAX_QUANTIZER, (int32_t)RC_MAX_QUANTIZER, &error2);
 
 
     dbg(9, "t_toxav_call_state_cb:002\n");
