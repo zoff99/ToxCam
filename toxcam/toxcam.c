@@ -155,7 +155,7 @@ typedef struct DHT_node
 #define AUTO_RESEND_SECONDS 60*5 // resend for this much seconds before asking again [5 min]
 #define VIDEO_BUFFER_COUNT 3
 uint32_t DEFAULT_GLOBAL_VID_BITRATE = 2500; // kbit/sec
-#define RC_MAX_QUANTIZER 50 // valid values between 10 - 56
+uint32_t RC_MAX_QUANTIZER 53; // valid values between 10 - 56
 #define DEFAULT_GLOBAL_AUD_BITRATE 6 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_VID_BITRATE 1000 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
@@ -3938,7 +3938,7 @@ int main(int argc, char *argv[])
     char *cvalue = NULL;
     int index;
     int opt;
-    const char     *short_opt = "hvd:tT23b:f";
+    const char     *short_opt = "hvd:tT23b:fq:";
     struct option   long_opt[] =
     {
         {"help",          no_argument,       NULL, 'h'},
@@ -3977,6 +3977,11 @@ int main(int argc, char *argv[])
 
             case 'f':
                 video_high = 1;
+                break;
+
+            case 'q':
+                RC_MAX_QUANTIZER = (uint32_t)atoi(optarg);
+                dbg(3, "Using max quantizer: %d\n", (int)RC_MAX_QUANTIZER);
                 break;
 
             case 'd':
