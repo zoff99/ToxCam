@@ -3132,6 +3132,7 @@ static void t_toxav_call_state_cb(ToxAV *av, uint32_t friend_number, uint32_t st
 
     TOXAV_ERR_OPTION_SET error2;
     toxav_option_set(av, friend_number, TOXAV_ENCODER_RC_MAX_QUANTIZER, (int32_t)RC_MAX_QUANTIZER, &error2);
+    toxav_option_set(av, friend_number, TOXAV_ENCODER_VP8_QUALITY, (int32_t)TOXAV_ENCODER_VP8_QUALITY_NORMAL, &error2);
 
 
     dbg(9, "t_toxav_call_state_cb:002\n");
