@@ -644,7 +644,7 @@ Tox *create_tox()
 
     // ------------------------------------------------------------
     // set our own handler for c-toxcore logging messages!!
-    options.log_callback = tox_log_cb__custom;
+    // options.log_callback = tox_log_cb__custom;
     // ------------------------------------------------------------
     FILE *f = fopen(savedata_filename, "rb");
 
