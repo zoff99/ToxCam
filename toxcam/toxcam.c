@@ -17,7 +17,6 @@
     -ltoxdht -ltoxnetwork -ltoxcrypto -lsodium -lpthread -static-libgcc -static-libstdc++ \
     -lopus -lvpx -lm -lpthread -lv4lconvert
  *
-
  *
  *
  */
@@ -3129,6 +3128,11 @@ static void t_toxav_call_state_cb(ToxAV *av, uint32_t friend_number, uint32_t st
         dbg(9, "Call with friend state:TOXAV_FRIEND_CALL_STATE_ACCEPTING_V\n");
     }
 
+
+    TOXAV_ERR_OPTION_SET error2;
+    toxav_option_set(Tav, friend_number, TOXAV_ENCODER_RC_MAX_QUANTIZER, (int32_t)38, &error2);
+
+
     dbg(9, "t_toxav_call_state_cb:002\n");
     int send_audio = (state & TOXAV_FRIEND_CALL_STATE_SENDING_A) && (state & TOXAV_FRIEND_CALL_STATE_ACCEPTING_A);
     int send_video = state & TOXAV_FRIEND_CALL_STATE_SENDING_V && (state & TOXAV_FRIEND_CALL_STATE_ACCEPTING_V);
@@ -3173,7 +3177,7 @@ static void t_toxav_bit_rate_status_cb(ToxAV *av, uint32_t friend_number,
         video_bit_rate_ = DEFAULT_GLOBAL_MIN_VID_BITRATE;
     }
 
-    toxav_bit_rate_set(av, friend_number, audio_bit_rate, video_bit_rate_, &error);
+    // toxav_bit_rate_set(av, friend_number, audio_bit_rate, video_bit_rate_, &error);
 
     if (error != 0)
     {
