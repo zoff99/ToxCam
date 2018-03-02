@@ -2934,9 +2934,9 @@ int v4l_getframe(uint8_t *y, uint8_t *u, uint8_t *v, uint16_t width, uint16_t he
 
             case EIO:
 
-                /* Could ignore EIO, see spec. */
+            /* Could ignore EIO, see spec. */
 
-                /* fall through */
+            /* fall through */
             default:
                 dbg(9, "VIDIOC_DQBUF error %d, %s\n", errno, strerror(errno));
                 return -1;
