@@ -123,8 +123,8 @@ static struct v4lconvert_data *v4lconvert_data;
 // ----------- version -----------
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 99
-#define VERSION_PATCH 15
-static const char global_version_string[] = "0.99.15";
+#define VERSION_PATCH 16
+static const char global_version_string[] = "0.99.16";
 // ----------- version -----------
 // ----------- version -----------
 
@@ -153,13 +153,13 @@ typedef struct DHT_node
 #define MAX_FILES 6 // how many filetransfers to/from 1 friend at the same time?
 #define MAX_RESEND_FILE_BEFORE_ASK 6
 #define AUTO_RESEND_SECONDS 60*5 // resend for this much seconds before asking again [5 min]
-#define VIDEO_BUFFER_COUNT 3
+#define VIDEO_BUFFER_COUNT 4
 uint32_t DEFAULT_GLOBAL_VID_BITRATE = 2500; // kbit/sec
-uint32_t RC_MAX_QUANTIZER = 53; // valid values between 10 - 56
+int32_t RC_MAX_QUANTIZER = 56; // valid values between 10 - 56
 #define DEFAULT_GLOBAL_AUD_BITRATE 6 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_VID_BITRATE 1000 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
-#define DEFAULT_FPS_SLEEP_MS 70 // 250=4fps, 500=2fps, 160=6fps, 90=11fps  // default video fps (sleep in msecs.)
+#define DEFAULT_FPS_SLEEP_MS 50 // 250=4fps, 500=2fps, 160=6fps, 90=11fps  // default video fps (sleep in msecs.)
 #define PROXY_PORT_TOR_DEFAULT 9050
 #define RECONNECT_AFTER_OFFLINE_SECONDS 90 // 90s offline and we try to reconnect
 
@@ -2793,6 +2793,22 @@ int init_cam()
         dbg(0, "VIDIOC_G_FMT\n");
     }
 
+    // set 15 fps ----------
+    struct v4l2_streamparm parm;
+    parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    parm.parm.capture.timeperframe.numerator = 1;
+    parm.parm.capture.timeperframe.denominator = 25;
+
+    if (-1 == xioctl(fd, VIDIOC_S_PARM, &parm))
+    {
+        dbg(0, "VIDIOC_S_PARM\n");
+    }
+    else
+    {
+        dbg(9, "VIDIOC_S_PARM:set ok\n");
+    }
+
+    // set 15 fps ----------
     video_width             = format.fmt.pix.width;
     video_height            = format.fmt.pix.height;
     dbg(2, "Video size(got): %u %u\n", video_width, video_height);
@@ -3092,6 +3108,12 @@ static void t_toxav_call_cb(ToxAV *av, uint32_t friend_number, bool audio_enable
         dbg(9, "Handling CALL callback friendnum=%d audio_bitrate=%d video_bitrate=%d\n", (int)friend_number,
             (int)audio_bitrate, (int)video_bitrate);
         toxav_answer(av, friend_number, audio_bitrate, video_bitrate, &err);
+        TOXAV_ERR_OPTION_SET error2;
+        // toxav_option_set(av, friend_number, TOXAV_ENCODER_VP8_QUALITY, (int32_t)TOXAV_ENCODER_VP8_QUALITY_NORMAL, &error2);
+        toxav_option_set(av, friend_number, TOXAV_ENCODER_RC_MAX_QUANTIZER, (int32_t)RC_MAX_QUANTIZER, &error2);
+        dbg(9, "Call with friend state:(1)set TOXAV_ENCODER_RC_MAX_QUANTIZER to %d res=%d\n",
+            (int)RC_MAX_QUANTIZER,
+            (int)error2);
     }
 }
 
@@ -3129,12 +3151,12 @@ static void t_toxav_call_state_cb(ToxAV *av, uint32_t friend_number, uint32_t st
         dbg(9, "Call with friend state:TOXAV_FRIEND_CALL_STATE_ACCEPTING_V\n");
     }
 
-
     TOXAV_ERR_OPTION_SET error2;
+    // toxav_option_set(av, friend_number, TOXAV_ENCODER_VP8_QUALITY, (int32_t)TOXAV_ENCODER_VP8_QUALITY_NORMAL, &error2);
     toxav_option_set(av, friend_number, TOXAV_ENCODER_RC_MAX_QUANTIZER, (int32_t)RC_MAX_QUANTIZER, &error2);
-    toxav_option_set(av, friend_number, TOXAV_ENCODER_VP8_QUALITY, (int32_t)TOXAV_ENCODER_VP8_QUALITY_NORMAL, &error2);
-
-
+    dbg(9, "Call with friend state:(0)set TOXAV_ENCODER_RC_MAX_QUANTIZER to %d res=%d\n",
+        (int)RC_MAX_QUANTIZER,
+        (int)error2);
     dbg(9, "t_toxav_call_state_cb:002\n");
     int send_audio = (state & TOXAV_FRIEND_CALL_STATE_SENDING_A) && (state & TOXAV_FRIEND_CALL_STATE_ACCEPTING_A);
     int send_video = state & TOXAV_FRIEND_CALL_STATE_SENDING_V && (state & TOXAV_FRIEND_CALL_STATE_ACCEPTING_V);
@@ -3980,7 +4002,7 @@ int main(int argc, char *argv[])
                 break;
 
             case 'q':
-                RC_MAX_QUANTIZER = (uint32_t)atoi(optarg);
+                RC_MAX_QUANTIZER = (int32_t)atoi(optarg);
                 dbg(3, "Using max quantizer: %d\n", (int)RC_MAX_QUANTIZER);
                 break;
 
@@ -4012,6 +4034,7 @@ int main(int argc, char *argv[])
                 printf("Usage: %s [OPTIONS]\n", argv[0]);
                 printf("  -d, --videodevice devicefile         file\n");
                 printf("  -b bitrate                           video bitrate in kbit/s\n");
+                printf("  -q quality                           20 - 65 (20 is super high)\n");
                 printf("  -f                                   use 720p video mode\n");
                 printf("  -t,                                  tcp only mode\n");
                 printf("  -T,                                  use TOR as Relay\n");

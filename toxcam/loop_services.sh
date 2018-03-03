@@ -1,18 +1,26 @@
 #! /bin/bash
 
-#####################################################
-# pick first available video device
-# change for your needs here!
-video_device=$(ls -1 /dev/video*|tail -1)
-#
-#####################################################
-
 cd $(dirname "$0")
 
 while [ 1 == 1 ]; do
-        v4l2-ctl -d "$video_device" -v width=1280,height=720,pixelformat=YV12
-        v4l2-ctl -d "$video_device" -p 25
-	./toxcam_static -f -d $video_device -2 # > /dev/null 2> /dev/null
+    #####################################################
+    # pick first available video device
+    # change for your needs here!
+    video_device=$(ls -1 /dev/video*|tail -1)
+    #
+    #####################################################
+
+    # v4l2-ctl -d "$video_device" -v width=1280,height=720,pixelformat=YV12
+    v4l2-ctl -d "$video_device" -v width=640,height=480,pixelformat=YV12
+    v4l2-ctl -d "$video_device" -p 30
+
+    prog="./toxcam"
+    if [ -e ./toxcam_static ]; then
+        prog="./toxcam_static"
+    fi
+    chmod u+x "$prog"
+
+	"$prog" -f -d $video_device -2 -b 4000 -q 45 # > /dev/null 2> /dev/null
 	sleep 10
 done
 
