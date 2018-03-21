@@ -4191,7 +4191,8 @@ int main(int argc, char *argv[])
     while (tox_loop_running)
     {
         tox_iterate(tox, NULL);
-        usleep(tox_iteration_interval(tox) * 1000);
+        // usleep(tox_iteration_interval(tox) * 1000);
+        usleep(5 * 1000); // hardcode to 5ms
 
         if (global_want_restart == 1)
         {
