@@ -44,6 +44,7 @@
 
 #include <sodium/utils.h>
 #include <tox/tox.h>
+#include <tox/toxutil.h>
 #include <tox/toxav.h>
 
 
@@ -621,7 +622,7 @@ Tox *create_tox()
     // ----------------------------------------------
     options.ipv6_enabled = false;
     options.local_discovery_enabled = true;
-    options.hole_punching_enabled = true;
+    options.hole_punching_enabled = false;
     options.tcp_port = tcp_port;
 
     if (use_tor == 1)
@@ -644,7 +645,7 @@ Tox *create_tox()
 
     // ------------------------------------------------------------
     // set our own handler for c-toxcore logging messages!!
-    // options.log_callback = tox_log_cb__custom;
+    options.log_callback = tox_log_cb__custom;
     // ------------------------------------------------------------
     FILE *f = fopen(savedata_filename, "rb");
 
@@ -665,12 +666,12 @@ Tox *create_tox()
         options.savedata_type = TOX_SAVEDATA_TYPE_TOX_SAVE;
         options.savedata_data = savedata;
         options.savedata_length = fsize;
-        tox = tox_new(&options, NULL);
+        tox = tox_utils_new(&options, NULL);
         free((void *)savedata);
     }
     else
     {
-        tox = tox_new(&options, NULL);
+        tox = tox_utils_new(&options, NULL);
     }
 
     bool local_discovery_enabled = tox_options_get_local_discovery_enabled(&options);
@@ -1420,8 +1421,12 @@ void friendlist_onConnectionChange(Tox *m, uint32_t num, TOX_CONNECTION connecti
         save_resumable_fts(m, num);
         // friend went offline -> cancel all filetransfers
         kill_all_file_transfers_friend(m, num);
+
         // friend went offline -> hang up on all calls
-        av_local_disconnect(mytox_av, num);
+        if (friend_to_send_video_to == num)
+        {
+            av_local_disconnect(mytox_av, num);
+        }
     }
 
     dbg(2, "friendlist_onConnectionChange:*READY*:friendnum=%d %d\n", (int)num, (int)connection_status);
@@ -1710,7 +1715,7 @@ void run_cmd_return_output(const char *command, char *output, int lastline)
 void remove_friend(Tox *tox, uint32_t friend_number)
 {
     TOX_ERR_FRIEND_DELETE error;
-    tox_friend_delete(tox, friend_number, &error);
+    tox_utils_friend_delete(tox, friend_number, &error);
 }
 
 void cmd_delfriend(Tox *tox, uint32_t friend_number, const char *message)
@@ -4090,7 +4095,6 @@ int main(int argc, char *argv[])
     // init callbacks ----------------------------------
     tox_callback_friend_request(tox, friend_request_cb);
     tox_callback_friend_message(tox, friend_message_cb);
-    tox_callback_friend_connection_status(tox, friendlist_onConnectionChange);
     tox_callback_friend_status(tox, on_tox_friend_status);
     tox_callback_self_connection_status(tox, self_connection_status_cb);
     tox_callback_file_chunk_request(tox, on_file_chunk_request);
@@ -4098,6 +4102,11 @@ int main(int argc, char *argv[])
     tox_callback_file_recv(tox, on_file_recv);
     tox_callback_file_recv_chunk(tox, on_file_recv_chunk);
     // init callbacks ----------------------------------
+    // init toxutil callbacks ----------------------------------
+    tox_utils_callback_friend_connection_status(tox, friendlist_onConnectionChange);
+    tox_callback_friend_connection_status(tox, tox_utils_friend_connection_status_cb);
+    tox_callback_friend_lossless_packet(tox, tox_utils_friend_lossless_packet_cb);
+    // init toxutil callbacks ----------------------------------
     update_savedata_file(tox);
     load_friendlist(tox);
     char path[300];
@@ -4210,7 +4219,7 @@ int main(int argc, char *argv[])
     kill_all_file_transfers(tox);
     close_cam();
     toxav_kill(mytox_av);
-    tox_kill(tox);
+    tox_utils_kill(tox);
 
     if (logfile)
     {

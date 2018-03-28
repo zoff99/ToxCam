@@ -20,7 +20,7 @@ while [ 1 == 1 ]; do
     fi
     chmod u+x "$prog"
 
-	"$prog" -f -d $video_device -2 -b 3000 -q 40 # > /dev/null 2> /dev/null
+	"$prog" -f -d $video_device -2 -b 600 -q 60 # > /dev/null 2> /dev/null
 	sleep 10
 done
 
