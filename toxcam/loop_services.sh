@@ -12,7 +12,7 @@ while [ 1 == 1 ]; do
 
     v4l2-ctl -d "$video_device" -v width=1280,height=720,pixelformat=YV12
     # v4l2-ctl -d "$video_device" -v width=640,height=480,pixelformat=YV12
-    v4l2-ctl -d "$video_device" -p 30
+    v4l2-ctl -d "$video_device" -p 15
 
     prog="./toxcam"
     if [ -e ./toxcam_static ]; then
@@ -20,7 +20,7 @@ while [ 1 == 1 ]; do
     fi
     chmod u+x "$prog"
 
-	"$prog" -f -d $video_device -2 -b 600 -q 60 # > /dev/null 2> /dev/null
+	"$prog" -f -d $video_device -2 -b 200 -q 60 # > /dev/null 2> /dev/null
 	sleep 10
 done
 

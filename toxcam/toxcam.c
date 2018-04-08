@@ -124,8 +124,8 @@ static struct v4lconvert_data *v4lconvert_data;
 // ----------- version -----------
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 99
-#define VERSION_PATCH 16
-static const char global_version_string[] = "0.99.16";
+#define VERSION_PATCH 17
+static const char global_version_string[] = "0.99.17";
 // ----------- version -----------
 // ----------- version -----------
 
@@ -160,7 +160,7 @@ int32_t RC_MAX_QUANTIZER = 56; // valid values between 10 - 56
 #define DEFAULT_GLOBAL_AUD_BITRATE 6 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_VID_BITRATE 1000 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
-#define DEFAULT_FPS_SLEEP_MS 50 // 250=4fps, 500=2fps, 160=6fps, 90=11fps  // default video fps (sleep in msecs.)
+#define DEFAULT_FPS_SLEEP_MS 170 // 250=4fps, 500=2fps, 160=6fps, 90=11fps  // default video fps (sleep in msecs.)
 #define PROXY_PORT_TOR_DEFAULT 9050
 #define RECONNECT_AFTER_OFFLINE_SECONDS 90 // 90s offline and we try to reconnect
 
@@ -3457,7 +3457,8 @@ void *thread_video_av(void *data)
         toxav_iterate(av);
         // dbg(9, "AV video Thread #%d running ...", (int) id);
         pthread_mutex_unlock(&av_thread_lock);
-        usleep(toxav_iteration_interval(av) * 1000);
+        // usleep(toxav_iteration_interval(av) * 1000);
+        usleep(4 * 1000);
     }
 
     dbg(2, "ToxVideo:Clean video thread exit!\n");
