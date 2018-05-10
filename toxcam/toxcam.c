@@ -2828,6 +2828,27 @@ int init_cam()
         if (fmt.fmt.pix.sizeimage < min)
             fmt.fmt.pix.sizeimage = min;
     */
+    // HINT: set camera device fps -----------------------
+    struct v4l2_streamparm *setfps;
+    setfps = (struct v4l2_streamparm *)calloc(1, sizeof(struct v4l2_streamparm));
+
+    if (setfps)
+    {
+        memset(setfps, 0, sizeof(struct v4l2_streamparm));
+        setfps->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        setfps->parm.capture.timeperframe.numerator = 1;
+        setfps->parm.capture.timeperframe.denominator = 30;
+
+        if (-1 == xioctl(fd, VIDIOC_S_PARM, setfps))
+        {
+            dbg(0, "VIDIOC_S_PARM Error\n");
+        }
+
+        free(setfps);
+        setfps = NULL;
+    }
+
+    // HINT: set camera device fps -----------------------
     struct v4l2_requestbuffers bufrequest;
     CLEAR(bufrequest);
     bufrequest.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
