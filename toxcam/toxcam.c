@@ -160,7 +160,8 @@ int32_t RC_MAX_QUANTIZER = 56; // valid values between 10 - 56
 #define DEFAULT_GLOBAL_AUD_BITRATE 6 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_VID_BITRATE 1000 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
-#define DEFAULT_FPS_SLEEP_MS 170 // 250=4fps, 500=2fps, 160=6fps, 90=11fps  // default video fps (sleep in msecs.)
+// 250=4fps, 500=2fps, 160=6fps, 90=11fps  // default video fps (sleep in msecs.)
+int DEFAULT_FPS_SLEEP_MS = 170;
 #define PROXY_PORT_TOR_DEFAULT 9050
 #define RECONNECT_AFTER_OFFLINE_SECONDS 90 // 90s offline and we try to reconnect
 
@@ -579,6 +580,25 @@ time_t get_unix_time(void)
 void yieldcpu(uint32_t ms)
 {
     usleep(1000 * ms);
+}
+
+
+int get_number_in_string(const char *str, int default_value)
+{
+    int number;
+
+    while (!(*str >= '0' && *str <= '9') && (*str != '-') && (*str != '+'))
+    {
+        str++;
+    }
+
+    if (sscanf(str, "%d", &number) == 1)
+    {
+        return number;
+    }
+
+    // no int found, return default value
+    return default_value;
 }
 
 
@@ -1949,11 +1969,13 @@ void send_help_to_friend(Tox *tox, uint32_t friend_number)
     send_text_message_to_friend(tox, friend_number,
                                 "=========================\nToxCam version:%s\n=========================", global_version_string);
     // send_text_message_to_friend(tox, friend_number, " commands are:");
-    send_text_message_to_friend(tox, friend_number, " .stats    --> show ToxCam status");
-    send_text_message_to_friend(tox, friend_number, " .friends  --> show ToxCam Friends");
-    send_text_message_to_friend(tox, friend_number, " .snap     --> snap a single still image");
-    send_text_message_to_friend(tox, friend_number, " .restart  --> restart ToxCam system");
-    send_text_message_to_friend(tox, friend_number, " .vcm      --> videocall me");
+    // send_text_message_to_friend(tox, friend_number, " .help           --> show this help");
+    send_text_message_to_friend(tox, friend_number, " .stats          --> show ToxCam status");
+    send_text_message_to_friend(tox, friend_number, " .friends        --> show ToxCam Friends");
+    send_text_message_to_friend(tox, friend_number, " .snap           --> snap a single still image");
+    send_text_message_to_friend(tox, friend_number, " .restart        --> restart ToxCam system");
+    send_text_message_to_friend(tox, friend_number, " .vcm            --> videocall me");
+    send_text_message_to_friend(tox, friend_number, " .fps <delay ms> --> set delay in ms between sent frames");
 }
 
 //void start_zipfile(mz_zip_archive *pZip, size_t size_pZip, const char* zip_file_full_path)
@@ -2002,6 +2024,19 @@ void friend_message_cb(Tox *tox, uint32_t friend_number, TOX_MESSAGE_TYPE type, 
             else if (strncmp((char *)message, ".vcm", strlen((char *)".vcm")) == 0) // video call me!
             {
                 cmd_vcm(tox, friend_number);
+            }
+            else if (strncmp((char *)message, ".fps ", strlen((char *)".fps ")) == 0) // set 1000/fps
+            {
+                if (strlen(message) > 5)
+                {
+                    int num_new = get_number_in_string(message, (int)DEFAULT_FPS_SLEEP_MS);
+
+                    if ((num_new >= 1) && (num_new <= 1000))
+                    {
+                        DEFAULT_FPS_SLEEP_MS = num_new;
+                        dbg(9, "setting wait in ms: %d\n", (int)DEFAULT_FPS_SLEEP_MS);
+                    }
+                }
             }
             else
             {
@@ -2798,22 +2833,6 @@ int init_cam()
         dbg(0, "VIDIOC_G_FMT\n");
     }
 
-    // set 15 fps ----------
-    struct v4l2_streamparm parm;
-    parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    parm.parm.capture.timeperframe.numerator = 1;
-    parm.parm.capture.timeperframe.denominator = 25;
-
-    if (-1 == xioctl(fd, VIDIOC_S_PARM, &parm))
-    {
-        dbg(0, "VIDIOC_S_PARM\n");
-    }
-    else
-    {
-        dbg(9, "VIDIOC_S_PARM:set ok\n");
-    }
-
-    // set 15 fps ----------
     video_width             = format.fmt.pix.width;
     video_height            = format.fmt.pix.height;
     dbg(2, "Video size(got): %u %u\n", video_width, video_height);
@@ -2841,7 +2860,19 @@ int init_cam()
 
         if (-1 == xioctl(fd, VIDIOC_S_PARM, setfps))
         {
-            dbg(0, "VIDIOC_S_PARM Error\n");
+            dbg(0, "VIDIOC_S_PARM:30fps -> Error\n");
+            setfps->parm.capture.timeperframe.denominator = 15;
+
+            if (-1 == xioctl(fd, VIDIOC_S_PARM, setfps))
+            {
+                dbg(0, "VIDIOC_S_PARM:15fps -> Error\n");
+                setfps->parm.capture.timeperframe.denominator = 10;
+
+                if (-1 == xioctl(fd, VIDIOC_S_PARM, setfps))
+                {
+                    dbg(0, "VIDIOC_S_PARM:10fps -> Error\n");
+                }
+            }
         }
 
         free(setfps);
