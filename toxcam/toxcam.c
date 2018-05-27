@@ -155,10 +155,10 @@ typedef struct DHT_node
 #define MAX_RESEND_FILE_BEFORE_ASK 6
 #define AUTO_RESEND_SECONDS 60*5 // resend for this much seconds before asking again [5 min]
 #define VIDEO_BUFFER_COUNT 4
-uint32_t DEFAULT_GLOBAL_VID_BITRATE = 2500; // kbit/sec
+uint32_t DEFAULT_GLOBAL_VID_BITRATE = 900; // kbit/sec
 int32_t RC_MAX_QUANTIZER = 56; // valid values between 10 - 56
 #define DEFAULT_GLOBAL_AUD_BITRATE 6 // kbit/sec
-#define DEFAULT_GLOBAL_MIN_VID_BITRATE 1000 // kbit/sec
+#define DEFAULT_GLOBAL_MIN_VID_BITRATE 90 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
 // 250=4fps, 500=2fps, 160=6fps, 90=11fps  // default video fps (sleep in msecs.)
 int DEFAULT_FPS_SLEEP_MS = 170;
@@ -894,7 +894,7 @@ void bootstap_nodes(Tox *tox, DHT_node nodes[], int number_of_nodes, int add_as_
             // dbg(9, "bootstrap:%s %d [TRUE]res=%d\n", nodes[i].ip, nodes[i].port, res);
         }
 
-        if ((add_as_tcp_relay == 1) && (switch_tcponly == 1))
+        if ((add_as_tcp_relay == 1) || (switch_tcponly == 1))
         {
             res = tox_add_tcp_relay(tox, nodes[i].ip, nodes[i].port, nodes[i].key_bin, &error); // use also as TCP relay
 
