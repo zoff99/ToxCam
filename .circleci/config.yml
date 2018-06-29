@@ -117,8 +117,6 @@ jobs:
           command: |
             set -x
             cd "$WRKDIR";cd toxcam ; rm -fv toxcam toxcam_static
-            echo "##########"
-            cd /home/ubuntu/installdest_linux/usr/include/; find .
             cd "$WRKDIR";cd toxcam ; gcc -O3 -fPIC -I/home/ubuntu/installdest_linux/usr/include/ -o toxcam toxcam.c -std=gnu99 -lsodium -ltoxcore -ltoxav -lpthread -lvpx -lv4lconvert
             cd "$WRKDIR";cd toxcam ; ldd toxcam
             cd "$WRKDIR";cd toxcam ; gcc -g -O3 -Wall -Wextra -Wpedantic -L/home/ubuntu/installdest_linux/usr/lib -I/home/ubuntu/installdest_linux/usr/include/ -o toxcam_static toxcam.c -static -std=gnu99 -lsodium -ltoxcore -ltoxav -ltoxgroup -ltoxmessenger -ltoxfriends -ltoxnetcrypto -ltoxdht -ltoxnetwork -ltoxcrypto -lsodium -lpthread -static-libgcc -static-libstdc++ -lopus -lvpx -lm -lpthread -lv4lconvert -ljpeg -lm -lrt
