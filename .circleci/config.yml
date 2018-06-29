@@ -12,3 +12,9 @@ jobs:
       - run:
           name: Print the Current Time
           command: date
+      - run:
+          command: |
+            echo Running test
+            mkdir -p /tmp/test-results
+            echo bb
+            echo xx
