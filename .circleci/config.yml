@@ -63,6 +63,19 @@ jobs:
             echo aaa > "$CIRCLE_ARTIFACTS"/blub.txt
             ls -al "$CIRCLE_ARTIFACTS"/blub.txt
 
+      - run:
+          command: |
+            ### submodules ----------------
+            git submodule add --force https://github.com/TokTok/c-toxcore c-toxcore ; echo ok
+            git submodule add --force https://github.com/jedisct1/libsodium libsodium ; echo ok
+            git submodule init ; git submodule update ; echo ok
+            # -- sometimes submodule can't find commit hash, whatever ------
+            rm -Rf c-toxcore ; git clone "$CTOXCORE_URL"
+            # -- sometimes submodule can't find commit hash, whatever ------
+            cd c-toxcore/ ; git checkout "$CTOXCORE_VERSION_HASH"
+            cd libsodium/ ; git checkout $LIBSODIUM_VERSION
+            ### submodules ----------------
+
       # Save artifacts
       - store_artifacts:
           path: /tmp/artifacts
