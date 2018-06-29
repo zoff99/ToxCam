@@ -7,6 +7,7 @@ jobs:
     environment:
         - MAKEFLAGS: ""
         - CIRCLE_ARTIFACTS: "/tmp/artifacts"
+        - DEBIAN_FRONTEND: noninteractive
 ## ----------- RASPI cross compile ----------------
         - RASPI_PATH: "/home/ubuntu/cc/tools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
         - RASPI_SYSROOT_: "/home/ubuntu/cc/tools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/arm-linux-gnueabihf/sysroot"
@@ -34,16 +35,13 @@ jobs:
         - RASPBERRRY_TOOLS_HASH: d820ab9c21969013b4e56c7e9cba25518afcdd44
 
     steps:
-      - run: apt update
+      - run: sudo apt update
       # to make circleCI tools work properly ---
-      - run: apt install -y git ssh tar gzip ca-certificates
+      - run: sudo apt install -y git ssh tar gzip ca-certificates
       # to make circleCI tools work properly ---
       - checkout
       - run: echo 127.0.0.1 devhost | sudo tee -a /etc/hosts
-      - run: uname -a;pwd;df -h; ls -al;id -a
-      - run:
-          name: Print the Current Time
-          command: date
+      - run: uname -a;pwd;df -h;id -a;lsb_release --all
       - run:
           command: |
            sudo apt-get install -y cmake
