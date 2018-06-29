@@ -1,13 +1,16 @@
 version: 2
 jobs:
   build:
+    working_directory: /home/ubuntu
     docker:
-      - image: debian:stretch
+      - image: circleci/classic:edge
+         environment:
+         ENV: CI
     steps:
       - checkout
       - run:
           name: Greeting
-          command: echo Hello, world.
+          command: uname -a;pwd;df -h; ls -al;id -a
       - run:
           name: Print the Current Time
           command: date
