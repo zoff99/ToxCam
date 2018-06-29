@@ -8,9 +8,7 @@ jobs:
          ENV: CI
     steps:
       - checkout
-      - run:
-          name: Greeting
-          command: uname -a;pwd;df -h; ls -al;id -a
+      - run: uname -a;pwd;df -h; ls -al;id -a
       - run:
           name: Print the Current Time
           command: date
