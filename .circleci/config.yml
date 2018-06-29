@@ -4,8 +4,8 @@ jobs:
     working_directory: /home/ubuntu
     docker:
       - image: ubuntu:14.04
-         environment:
-         ENV: CI
+    environment:
+        ENV: CI
     steps:
       - checkout
       - run: uname -a;pwd;df -h; ls -al;id -a
