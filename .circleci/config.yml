@@ -14,11 +14,13 @@ jobs:
           command: date
       - run:
           command: |
+            set -xu
             echo Running test
             mkdir -p /tmp/artifacts
             echo bb
             echo xx
             echo aaa > /tmp/artifacts/blub.txt
+            ls -al /tmp/artifacts/blub.txt
       # Save artifacts
       - store_artifacts:
           path: /tmp/artifacts
