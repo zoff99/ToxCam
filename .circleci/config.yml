@@ -44,7 +44,7 @@ jobs:
       - run:
           command: |
            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cmake
-           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libtool autotools-dev automake checkinstall check git yasm libv4lconvert0 libv4l-dev
+           sudo DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y libtool autotools-dev automake checkinstall check git yasm libv4lconvert0 libv4l-dev
            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libopus-dev libvpx-dev pkg-config
            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libasound2-dev
            sudo DEBIAN_FRONTEND=noninteractive apt-get install -y linux-generic
