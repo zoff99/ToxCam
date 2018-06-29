@@ -24,7 +24,6 @@ jobs:
       # Save artifacts
       - store_artifacts:
           path: /tmp/artifacts
-          destination: build
 
 workflows:
   version: 2
