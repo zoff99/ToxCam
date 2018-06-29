@@ -45,15 +45,28 @@ jobs:
           command: date
       - run:
           command: |
-            set -xu
-            echo $ENV
-            echo $BLUB
-            echo Running test
+           sudo apt-get install cmake
+           aptitude search 4l|grep -i convert ; exit 0
+           aptitude search 4l|grep -i v4l ; exit 0
+           sudo apt-get install build-essential libtool autotools-dev automake checkinstall check git yasm libv4lconvert0 libv4l-dev
+           sudo apt-get install libopus-dev libvpx-dev pkg-config
+           sudo apt-get install libasound2-dev
+           sudo apt-get install linux-generic
+           sudo apt-get install libjpeg-dev
+           sudo apt-get install libpulse-dev
+           sudo apt-get install libconfig-dev
+           sudo apt-get install astyle ; exit 0
+           sudo bash -c "echo '::1             localhost ipv6-localhost ipv6-loopback' >> /etc/hosts" # ipv6 localhost entry
+           gcc --version ; exit 0
+           clang --version ; exit 0
+           astyle --version ; exit 0
+
+      - run:
+          command: |
             mkdir -p /tmp/artifacts
-            echo bb
-            echo xx
             echo aaa > /tmp/artifacts/blub.txt
             ls -al /tmp/artifacts/blub.txt
+
       # Save artifacts
       - store_artifacts:
           path: /tmp/artifacts
