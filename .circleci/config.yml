@@ -37,22 +37,21 @@ jobs:
     steps:
       - run: sudo apt update
       # to make circleCI tools work properly ---
-      - run: sudo apt install -y git ssh tar gzip ca-certificates
+      - run: sudo apt -qq install -y git ssh tar gzip ca-certificates
       # to make circleCI tools work properly ---
       - checkout
-      - run: echo 127.0.0.1 devhost | sudo tee -a /etc/hosts
       - run: uname -a;pwd;df -h;id -a;lsb_release --all
       - run:
           command: |
-           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cmake
-           sudo DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install -y libtool autotools-dev automake checkinstall check git yasm libv4lconvert0 libv4l-dev
-           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libopus-dev libvpx-dev pkg-config
-           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libasound2-dev
-           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y linux-generic
-           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libjpeg-dev
-           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libpulse-dev
-           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libconfig-dev
-           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y astyle
+           sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y cmake
+           sudo DEBIAN_FRONTEND=noninteractive apt-get -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" -qq install -y libtool autotools-dev automake checkinstall check git yasm libv4lconvert0 libv4l-dev
+           sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y libopus-dev libvpx-dev pkg-config
+           sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y libasound2-dev
+           sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y linux-generic
+           sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y libjpeg-dev
+           sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y libpulse-dev
+           sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y libconfig-dev
+           sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y astyle
            sudo bash -c "echo '::1             localhost ipv6-localhost ipv6-loopback' >> /etc/hosts"
            gcc --version
            astyle --version
