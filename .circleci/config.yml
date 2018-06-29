@@ -5,8 +5,33 @@ jobs:
     docker:
       - image: ubuntu:14.04
     environment:
-        - ENV: CI
-        - BLUB: "fiowj3 90ru34ir50leq23le0ß23läqwöeüp"
+        - MAKEFLAGS: ""
+## ----------- RASPI cross compile ----------------
+        - RASPI_PATH: "/home/ubuntu/cc/tools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
+        - RASPI_SYSROOT_: "/home/ubuntu/cc/tools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/arm-linux-gnueabihf/sysroot"
+        - RASPI_TOOL_PREFIX: arm-linux-gnueabihf
+        - RASPI_INSTALL_DEST: "/home/ubuntu/installdest/"
+        - RASPI_TARGET_: arm-linux-gnueabi
+        - RASPI_HOST_: arm-linux-gnueabi
+        - RASPI_CXX: $RASPI_TOOL_PREFIX-g++
+        - RASPI_AR: $RASPI_TOOL_PREFIX-ar
+        - RASPI_RANLIB: $RASPI_TOOL_PREFIX-ranlib
+        - RASPI_CC: $RASPI_TOOL_PREFIX-gcc
+        - RASPI_LD: $RASPI_TOOL_PREFIX-ld
+        - RASPI_PKG_CONFIG_PATH: "/home/ubuntu/cc/tools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/arm-linux-gnueabihf/sysroot/usr/lib/pkgconfig"
+        - RASPI_s_: "/home/ubuntu/src/"
+        - RASPI_PKGSDIR: "/home/ubuntu/pkgs/"
+        - CF2: " -O3 -g -fPIC -marm -march=armv8-a+crc -mtune=cortex-a53 -mfpu=neon-fp-armv8 -mfloat-abi=hard -ftree-vectorize "
+        - CF3: " -funsafe-math-optimizations "
+    # c-toxcore version used
+        - CTOXCORE_VERSION_HASH: "zoff99/_0.1.10_2017_video_fix_09"
+    # c-toxcore repo used
+    # CTOXCORE_URL: "https://github.com/TokTok/c-toxcore"
+        - CTOXCORE_URL: "https://github.com/zoff99/c-toxcore"
+        - LIBSODIUM_VERSION: "tags/1.0.16"
+        - LIBSODIUM_BRANCH: "1.0.16"
+        - RASPBERRRY_TOOLS_HASH: d820ab9c21969013b4e56c7e9cba25518afcdd44
+
     steps:
       - run: apt update
       # to make circleCI tools work properly ---
