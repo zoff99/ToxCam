@@ -3,7 +3,7 @@ jobs:
   build:
     working_directory: /home/ubuntu
     docker:
-      - image: circleci/classic:edge
+      - image: ubuntu:14.04
          environment:
          ENV: CI
     steps:
@@ -15,6 +15,11 @@ jobs:
       - run:
           command: |
             echo Running test
-            mkdir -p /tmp/test-results
+            mkdir -p /tmp/artifacts
             echo bb
             echo xx
+            echo aaa > /tmp/artifacts/blub.txt
+      # Save artifacts
+      - store_artifacts:
+          path: /tmp/artifacts
+          destination: build
