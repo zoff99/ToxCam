@@ -118,11 +118,10 @@ jobs:
             set -x
             cd "$WRKDIR";cd toxcam ; rm -fv toxcam toxcam_static
             echo "##########"
-            ls -al /home/ubuntu/installdest_linux/usr/include/
-            cd "$WRKDIR";cd toxcam ; gcc -O3 -fPIC -I/home/ubuntu/installdest_linux/usr/include/-o toxcam toxcam.c -std=gnu99 -lsodium -ltoxcore -ltoxav -lpthread -lvpx -lv4lconvert # -lasound
-            cd "$WRKDIR";cd toxcam ; ldd toxcam ; exit 0
-            cd "$WRKDIR";find / -name '*libjpeg*' 2> /dev/null ; exit 0
-            cd "$WRKDIR";cd toxcam ; gcc -g -O3 -Wall -Wextra -Wpedantic -L/home/ubuntu/installdest_linux/usr/lib -I/home/ubuntu/installdest_linux/usr/include/ -o toxcam_static toxcam.c -static -std=gnu99 -lsodium -ltoxcore -ltoxav -ltoxgroup -ltoxmessenger -ltoxfriends -ltoxnetcrypto -ltoxdht -ltoxnetwork -ltoxcrypto -lsodium -lpthread -static-libgcc -static-libstdc++ -lopus -lvpx -lm -lpthread -lv4lconvert -ljpeg -lm -lrt # -lasound
+            cd /home/ubuntu/installdest_linux/usr/include/; find .
+            cd "$WRKDIR";cd toxcam ; gcc -O3 -fPIC -I/home/ubuntu/installdest_linux/usr/include/ -o toxcam toxcam.c -std=gnu99 -lsodium -ltoxcore -ltoxav -lpthread -lvpx -lv4lconvert
+            cd "$WRKDIR";cd toxcam ; ldd toxcam
+            cd "$WRKDIR";cd toxcam ; gcc -g -O3 -Wall -Wextra -Wpedantic -L/home/ubuntu/installdest_linux/usr/lib -I/home/ubuntu/installdest_linux/usr/include/ -o toxcam_static toxcam.c -static -std=gnu99 -lsodium -ltoxcore -ltoxav -ltoxgroup -ltoxmessenger -ltoxfriends -ltoxnetcrypto -ltoxdht -ltoxnetwork -ltoxcrypto -lsodium -lpthread -static-libgcc -static-libstdc++ -lopus -lvpx -lm -lpthread -lv4lconvert -ljpeg -lm -lrt
             cd "$WRKDIR";cd toxcam ; ls -al toxcam toxcam_static
             cd "$WRKDIR";mkdir -p $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries/
             cd "$WRKDIR";cp -av toxcam/toxcam $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries/
