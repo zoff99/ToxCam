@@ -161,7 +161,7 @@ int32_t RC_MAX_QUANTIZER = 56; // valid values between 10 - 56
 #define DEFAULT_GLOBAL_MIN_VID_BITRATE 90 // kbit/sec
 #define DEFAULT_GLOBAL_MIN_AUD_BITRATE 6 // kbit/sec
 // 250=4fps, 500=2fps, 160=6fps, 90=11fps  // default video fps (sleep in msecs.)
-int DEFAULT_FPS_SLEEP_MS = 170;
+int DEFAULT_FPS_SLEEP_MS = 10;
 #define PROXY_PORT_TOR_DEFAULT 9050
 #define RECONNECT_AFTER_OFFLINE_SECONDS 90 // 90s offline and we try to reconnect
 
