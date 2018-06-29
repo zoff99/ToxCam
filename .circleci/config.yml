@@ -7,7 +7,6 @@ jobs:
     environment:
         - MAKEFLAGS: ""
         - CIRCLE_ARTIFACTS: "/tmp/artifacts"
-        - DEBIAN_FRONTEND: noninteractive
 ## ----------- RASPI cross compile ----------------
         - RASPI_PATH: "/home/ubuntu/cc/tools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
         - RASPI_SYSROOT_: "/home/ubuntu/cc/tools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/arm-linux-gnueabihf/sysroot"
@@ -44,15 +43,15 @@ jobs:
       - run: uname -a;pwd;df -h;id -a;lsb_release --all
       - run:
           command: |
-           sudo apt-get install -y cmake
-           sudo apt-get install -y build-essential libtool autotools-dev automake checkinstall check git yasm libv4lconvert0 libv4l-dev
-           sudo apt-get install -y libopus-dev libvpx-dev pkg-config
-           sudo apt-get install -y libasound2-dev
-           sudo apt-get install -y linux-generic
-           sudo apt-get install -y libjpeg-dev
-           sudo apt-get install -y libpulse-dev
-           sudo apt-get install -y libconfig-dev
-           sudo apt-get install -y astyle
+           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y cmake
+           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libtool autotools-dev automake checkinstall check git yasm libv4lconvert0 libv4l-dev
+           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libopus-dev libvpx-dev pkg-config
+           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libasound2-dev
+           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y linux-generic
+           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libjpeg-dev
+           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libpulse-dev
+           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libconfig-dev
+           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y astyle
            sudo bash -c "echo '::1             localhost ipv6-localhost ipv6-loopback' >> /etc/hosts"
            gcc --version
            astyle --version
