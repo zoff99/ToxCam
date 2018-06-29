@@ -117,10 +117,10 @@ jobs:
       - run:
           command: |
             cd "$WRKDIR";cd toxcam ; rm -fv toxcam toxcam_static
-            cd "$WRKDIR";cd toxcam ; gcc -O3 -fPIC -o toxcam toxcam.c -std=gnu99 -lsodium -I/usr/include/ -ltoxcore -ltoxav -lpthread -lvpx -lv4lconvert # -lasound
+            cd "$WRKDIR";cd toxcam ; gcc -O3 -fPIC -o toxcam toxcam.c -std=gnu99 -lsodium -I/home/ubuntu/installdest_linux/usr/include/ -ltoxcore -ltoxav -lpthread -lvpx -lv4lconvert # -lasound
             cd "$WRKDIR";cd toxcam ; ldd toxcam ; exit 0
             cd "$WRKDIR";find / -name '*libjpeg*' 2> /dev/null ; exit 0
-            cd "$WRKDIR";cd toxcam ; gcc -g -O3 -Wall -Wextra -Wpedantic -o toxcam_static toxcam.c -static -std=gnu99 -L/usr/lib -I/usr/include/ -lsodium -ltoxcore -ltoxav -ltoxgroup -ltoxmessenger -ltoxfriends -ltoxnetcrypto -ltoxdht -ltoxnetwork -ltoxcrypto -lsodium -lpthread -static-libgcc -static-libstdc++ -lopus -lvpx -lm -lpthread -lv4lconvert -ljpeg -lm -lrt # -lasound
+            cd "$WRKDIR";cd toxcam ; gcc -g -O3 -Wall -Wextra -Wpedantic -o toxcam_static toxcam.c -static -std=gnu99 -L/home/ubuntu/installdest_linux/usr/lib -I/home/ubuntu/installdest_linux/usr/include/ -lsodium -ltoxcore -ltoxav -ltoxgroup -ltoxmessenger -ltoxfriends -ltoxnetcrypto -ltoxdht -ltoxnetwork -ltoxcrypto -lsodium -lpthread -static-libgcc -static-libstdc++ -lopus -lvpx -lm -lpthread -lv4lconvert -ljpeg -lm -lrt # -lasound
             cd "$WRKDIR";cd toxcam ; ls -al toxcam toxcam_static
             cd "$WRKDIR";mkdir -p $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries/
             cd "$WRKDIR";cp -av toxcam/toxcam $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries/
