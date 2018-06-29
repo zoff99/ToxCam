@@ -7,6 +7,7 @@ jobs:
     environment:
         - MAKEFLAGS: ""
         - CIRCLE_ARTIFACTS: "/tmp/artifacts"
+        - WRKDIR: "/home/ubuntu"
 ## ----------- RASPI cross compile ----------------
         - RASPI_PATH: "/home/ubuntu/cc/tools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
         - RASPI_SYSROOT_: "/home/ubuntu/cc/tools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/arm-linux-gnueabihf/sysroot"
@@ -66,15 +67,72 @@ jobs:
       - run:
           command: |
             ### submodules ----------------
-            git submodule add --force https://github.com/TokTok/c-toxcore c-toxcore ; echo ok
-            git submodule add --force https://github.com/jedisct1/libsodium libsodium ; echo ok
-            git submodule init ; git submodule update ; echo ok
+            cd "$WRKDIR";git submodule add --force https://github.com/TokTok/c-toxcore c-toxcore ; echo ok
+            cd "$WRKDIR";git submodule add --force https://github.com/jedisct1/libsodium libsodium ; echo ok
+            cd "$WRKDIR";git submodule init ; git submodule update ; echo ok
             # -- sometimes submodule can't find commit hash, whatever ------
-            rm -Rf c-toxcore ; git clone "$CTOXCORE_URL"
+            cd "$WRKDIR";rm -Rf c-toxcore ; git clone "$CTOXCORE_URL"
             # -- sometimes submodule can't find commit hash, whatever ------
-            cd c-toxcore/ ; git checkout "$CTOXCORE_VERSION_HASH"
-            cd libsodium/ ; git checkout $LIBSODIUM_VERSION
+            cd "$WRKDIR";cd c-toxcore/ ; git checkout "$CTOXCORE_VERSION_HASH"
+            cd "$WRKDIR";cd libsodium/ ; git checkout $LIBSODIUM_VERSION
             ### submodules ----------------
+
+
+      - run:
+          command: |
+            ### ------- compile and install libsodium -------
+            cd "$WRKDIR";cd libsodium/ ; ./autogen.sh
+            cd "$WRKDIR";cd libsodium/ ; ./configure && make check
+            cd "$WRKDIR";cd libsodium/ ; sudo bash -c "printf 'y\naa\n\n' | checkinstall --install --pkgname libsodium --pkgversion 1.0.0 --nodoc --deldesc=no --pkglicense='GPL2'"
+            cd "$WRKDIR";cd libsodium/ ; sudo ldconfig
+            cd "$WRKDIR";cd libsodium ; sudo ldconfig -v 2>/dev/null | grep sodium
+            ## --- now again to save the artefact ---
+            cd "$WRKDIR";cd libsodium ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; rm -Rf "$INSTALL_DEST"
+            cd "$WRKDIR";cd libsodium ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; mkdir -p  "$INSTALL_DEST"/usr ; ./configure --prefix="$INSTALL_DEST"/usr
+            cd "$WRKDIR";cd libsodium ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; make install ; ls -alR "$INSTALL_DEST"/usr
+            cd "$WRKDIR";mkdir -p $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries
+            cd "$WRKDIR";export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; cd "$INSTALL_DEST" ; tar -czvf $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries/pkg_libsodium.tar.gz *
+            ## --- now again to save the artefact ---
+            ### ------- compile and install libsodium -------
+
+
+      - run:
+          command: |
+            ### ------------ compile and install c-toxcore ------------
+            cd "$WRKDIR";cd c-toxcore ; cmake -DWARNINGS=OFF .
+            cd "$WRKDIR";cd c-toxcore ; make
+            cd "$WRKDIR";cd c-toxcore ; sudo make install
+            cd "$WRKDIR";cd c-toxcore ; sudo ldconfig -v 2>/dev/null | grep toxcore
+            ## --- now again to save the artefact ---
+            cd "$WRKDIR";cd c-toxcore ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; rm -Rf "$INSTALL_DEST"
+            cd "$WRKDIR";cd c-toxcore ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; mkdir -p  "$INSTALL_DEST"/usr ; autoreconf -fi ; ./configure --enable-logging --disable-soname-versions --prefix="$INSTALL_DEST"/usr
+            cd "$WRKDIR";cd c-toxcore ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; make install ; ls -alR "$INSTALL_DEST"/usr
+            cd "$WRKDIR";mkdir -p $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries
+            cd "$WRKDIR";export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; cd "$INSTALL_DEST" ; tar -czvf $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries/pkg_c-toxcore.tar.gz *
+            ## --- now again to save the artefact ---
+            ### ------------ run tests
+            # - cd c-toxcore ; make test ARGS="-V" ; ex1=$? ; if [ $ex1 -ne 0 ]; then sleep 60; make test ARGS="-V" ; exit $? ; fi
+            ### ------------ compile and install c-toxcore ------------
+
+      - run:
+          command: |
+            cd "$WRKDIR";cd toxcam ; rm -fv toxcam toxcam_static
+            cd "$WRKDIR";cd toxcam ; gcc -O3 -fPIC -o toxcam toxcam.c -std=gnu99 -lsodium -I/usr/local/include/ -ltoxcore -ltoxav -lpthread -lvpx -lv4lconvert # -lasound
+            cd "$WRKDIR";cd toxcam ; ldd toxcam ; exit 0
+            cd "$WRKDIR";find / -name '*libjpeg*' 2> /dev/null ; exit 0
+            cd "$WRKDIR";cd toxcam ; gcc -g -O3 -Wall -Wextra -Wpedantic -o toxcam_static toxcam.c -static -std=gnu99 -L/usr/local/lib -I/usr/local/include/ -lsodium -ltoxcore -ltoxav -ltoxgroup -ltoxmessenger -ltoxfriends -ltoxnetcrypto -ltoxdht -ltoxnetwork -ltoxcrypto -lsodium -lpthread -static-libgcc -static-libstdc++ -lopus -lvpx -lm -lpthread -lv4lconvert -ljpeg -lm -lrt # -lasound
+            cd "$WRKDIR";cd toxcam ; ls -al toxcam toxcam_static
+            cd "$WRKDIR";mkdir -p $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries/
+            cd "$WRKDIR";cp -av toxcam/toxcam $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries/
+            cd "$WRKDIR";cp -av toxcam/toxcam_static $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries/
+            #cd toxcam ; ./toxcam_static :
+            #    background: true
+            cd "$WRKDIR";sleep 10
+            cd "$WRKDIR";cd toxcam ; cat ./toxcam.log
+            cd "$WRKDIR";cd toxcam ; cat ./toxcam.log | grep '\-\-MyToxID\-\-:' | cut -d':' -f 3
+            cd "$WRKDIR";sleep 10
+            #- sleep 240
+            cd "$WRKDIR";cd toxcam ; cat ./toxcam.log
 
       # Save artifacts
       - store_artifacts:
