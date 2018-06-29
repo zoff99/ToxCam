@@ -5,9 +5,15 @@ jobs:
     docker:
       - image: ubuntu:14.04
     environment:
-        ENV: CI
+        - ENV: CI
+        - BLUB: "fiowj3 90ru34ir50leq23le0ß23läqwöeüp"
     steps:
+      - run: apt update
+      # to make circleCI tools work properly ---
+      - run: apt install -y git ssh tar gzip ca-certificates
+      # to make circleCI tools work properly ---
       - checkout
+      - run: echo 127.0.0.1 devhost | sudo tee -a /etc/hosts
       - run: uname -a;pwd;df -h; ls -al;id -a
       - run:
           name: Print the Current Time
@@ -15,6 +21,8 @@ jobs:
       - run:
           command: |
             set -xu
+            echo $ENV
+            echo $BLUB
             echo Running test
             mkdir -p /tmp/artifacts
             echo bb
