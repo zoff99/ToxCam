@@ -6,6 +6,7 @@ jobs:
       - image: ubuntu:14.04
     environment:
         - MAKEFLAGS: ""
+        - CIRCLE_ARTIFACTS: "/tmp/artifacts"
 ## ----------- RASPI cross compile ----------------
         - RASPI_PATH: "/home/ubuntu/cc/tools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/bin:$PATH"
         - RASPI_SYSROOT_: "/home/ubuntu/cc/tools/arm-bcm2708/arm-rpi-4.9.3-linux-gnueabihf/arm-linux-gnueabihf/sysroot"
@@ -45,27 +46,25 @@ jobs:
           command: date
       - run:
           command: |
-           sudo apt-get install cmake
-           aptitude search 4l|grep -i convert ; exit 0
-           aptitude search 4l|grep -i v4l ; exit 0
-           sudo apt-get install build-essential libtool autotools-dev automake checkinstall check git yasm libv4lconvert0 libv4l-dev
-           sudo apt-get install libopus-dev libvpx-dev pkg-config
-           sudo apt-get install libasound2-dev
-           sudo apt-get install linux-generic
-           sudo apt-get install libjpeg-dev
-           sudo apt-get install libpulse-dev
-           sudo apt-get install libconfig-dev
-           sudo apt-get install astyle ; exit 0
-           sudo bash -c "echo '::1             localhost ipv6-localhost ipv6-loopback' >> /etc/hosts" # ipv6 localhost entry
-           gcc --version ; exit 0
-           clang --version ; exit 0
-           astyle --version ; exit 0
+           sudo apt-get install -y cmake
+           sudo apt-get install -y build-essential libtool autotools-dev automake checkinstall check git yasm libv4lconvert0 libv4l-dev
+           sudo apt-get install -y libopus-dev libvpx-dev pkg-config
+           sudo apt-get install -y libasound2-dev
+           sudo apt-get install -y linux-generic
+           sudo apt-get install -y libjpeg-dev
+           sudo apt-get install -y libpulse-dev
+           sudo apt-get install -y libconfig-dev
+           sudo apt-get install -y astyle
+           sudo bash -c "echo '::1             localhost ipv6-localhost ipv6-loopback' >> /etc/hosts"
+           gcc --version
+           astyle --version
+           cmake --version
 
       - run:
           command: |
-            mkdir -p /tmp/artifacts
-            echo aaa > /tmp/artifacts/blub.txt
-            ls -al /tmp/artifacts/blub.txt
+            mkdir -p "$CIRCLE_ARTIFACTS"
+            echo aaa > "$CIRCLE_ARTIFACTS"/blub.txt
+            ls -al "$CIRCLE_ARTIFACTS"/blub.txt
 
       # Save artifacts
       - store_artifacts:
