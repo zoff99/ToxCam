@@ -26,10 +26,10 @@ jobs:
         - CF2: " -O3 -g -fPIC -marm -march=armv8-a+crc -mtune=cortex-a53 -mfpu=neon-fp-armv8 -mfloat-abi=hard -ftree-vectorize "
         - CF3: " -funsafe-math-optimizations "
     # c-toxcore version used
-        - CTOXCORE_VERSION_HASH: "zoff99/_0.1.10_2017_video_fix_09"
+        - CTOXCORE_VERSION_HASH: "zoff99/toxcore_v1.0.10__toxav_h264_001"
     # c-toxcore repo used
     # CTOXCORE_URL: "https://github.com/TokTok/c-toxcore"
-        - CTOXCORE_URL: "https://github.com/zoff99/c-toxcore"
+        - CTOXCORE_URL: "https://github.com/zoff99/c-toxcore_team"
         - LIBSODIUM_VERSION: "tags/1.0.16"
         - LIBSODIUM_BRANCH: "1.0.16"
         - RASPBERRRY_TOOLS_HASH: d820ab9c21969013b4e56c7e9cba25518afcdd44
@@ -94,24 +94,59 @@ jobs:
             ## --- now again to save the artefact ---
             ### ------- compile and install libsodium -------
 
+      - run:
+          command: |
+            ### ------------ compile and install x264 ------------
+            cd "$WRKDIR";git clone git://git.videolan.org/x264.git
+            cd "$WRKDIR";cd x264
+            cd "$WRKDIR";cd x264;git checkout stable
+            cd "$WRKDIR";cd x264;./configure --prefix=/home/ubuntu/installdest_linux/ --disable-opencl --enable-shared --enable-static --disable-avs --disable-cli
+            cd "$WRKDIR";cd x264;make clean
+            cd "$WRKDIR";cd x264;make -j4
+            cd "$WRKDIR";cd x264;make install
+            ### ------------ compile and install x264 ------------
+
+      - run:
+          command: |
+            ### ------------ compile and install libav ------------
+            cd "$WRKDIR";git clone https://github.com/libav/libav
+            cd "$WRKDIR";cd libav
+            cd "$WRKDIR";cd libav;git checkout v12.3
+            cd "$WRKDIR";cd libav;./configure --prefix=/home/ubuntu/installdest_linux/ --disable-devices --disable-programs \
+--disable-doc --disable-avdevice --disable-avformat \
+--disable-swscale \
+--disable-avfilter --disable-network --disable-everything \
+--disable-bzlib \
+--disable-libxcb-shm \
+--disable-libxcb-xfixes \
+--enable-parser=h264 \
+--enable-runtime-cpudetect \
+--enable-omx-rpi --enable-mmal \
+--enable-omx \
+--enable-decoder=h264_mmal \
+--enable-decoder=h264_vdpau \
+--enable-vdpau \
+--enable-gpl --enable-decoder=h264
+            cd "$WRKDIR";cd libav;make clean
+            cd "$WRKDIR";cd libav;make -j4
+            cd "$WRKDIR";cd libav;make install
+            ### ------------ compile and install libav ------------
+
 
       - run:
           command: |
             ### ------------ compile and install c-toxcore ------------
-            cd "$WRKDIR";cd c-toxcore ; cmake -DWARNINGS=OFF .
-            cd "$WRKDIR";cd c-toxcore ; make V=1 VERBOSE=1 -j8
-            cd "$WRKDIR";cd c-toxcore ; sudo make V=1 VERBOSE=1 install
-            cd "$WRKDIR";cd c-toxcore ; sudo ldconfig -v 2>/dev/null | grep toxcore
-            ## --- now again to save the artefact ---
-            cd "$WRKDIR";cd c-toxcore ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; rm -Rf "$INSTALL_DEST"
-            cd "$WRKDIR";cd c-toxcore ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; mkdir -p  "$INSTALL_DEST"/usr ; autoreconf -fi ; ./configure --enable-logging --disable-soname-versions --prefix="$INSTALL_DEST"/usr
-            cd "$WRKDIR";cd c-toxcore ; export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; make install ; ls -alR "$INSTALL_DEST"/usr
-            cd "$WRKDIR";mkdir -p $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries
-            cd "$WRKDIR";export INSTALL_DEST=/home/ubuntu/installdest_linux/ ; cd "$INSTALL_DEST" ; tar -czvf $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries/pkg_c-toxcore.tar.gz *
-            ## --- now again to save the artefact ---
-            ### ------------ run tests
-            # - cd c-toxcore ; make test ARGS="-V" ; ex1=$? ; if [ $ex1 -ne 0 ]; then sleep 60; make test ARGS="-V" ; exit $? ; fi
+            cd "$WRKDIR";cd c-toxcore ; export CFLAGS=" $CF2 -D_GNU_SOURCE -I/home/ubuntu/installdest_linux/include/ -O3 -g -fstack-protector-all "
+            cd "$WRKDIR";cd c-toxcore ; export LDFLAGS=-L/home/ubuntu/installdest_linux/lib
+            cd "$WRKDIR";cd c-toxcore ; ./autogen.sh
+            cd "$WRKDIR";cd c-toxcore ; ./configure --prefix=/home/ubuntu/installdest_linux/ --disable-soname-versions --disable-testing --disable-shared
+            cd "$WRKDIR";cd c-toxcore ; make -j 4
+            cd "$WRKDIR";cd c-toxcore ; make install
             ### ------------ compile and install c-toxcore ------------
+
+      - run:
+          command: |
+            cd /home/ubuntu/installdest_linux/ ; find .
 
       - run:
           command: |
