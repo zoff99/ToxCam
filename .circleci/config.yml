@@ -84,6 +84,22 @@ jobs:
 
       - run:
           command: |
+            ### ------------ compile and install nasm ------------
+            cd "$WRKDIR";rm -Rf nasm
+            cd "$WRKDIR";git clone http://repo.or.cz/nasm.git
+            cd "$WRKDIR";cd nasm;git checkout nasm-2.13.03
+            cd "$WRKDIR";cd nasm;./autogen.sh
+            cd "$WRKDIR";cd nasm;./configure --prefix=/home/ubuntu/installdest_linux/
+            cd "$WRKDIR";cd nasm;make clean
+            cd "$WRKDIR";cd nasm;make -j4
+            cd "$WRKDIR";cd nasm # touch nasm.1
+            cd "$WRKDIR";cd nasm # touch ndisasm.1
+            cd "$WRKDIR";cd nasm;make install
+            ### ------------ compile and install nasm ------------
+
+
+      - run:
+          command: |
             ### ------------ compile and install x264 ------------
             cd "$WRKDIR";git clone git://git.videolan.org/x264.git
             cd "$WRKDIR";cd x264
