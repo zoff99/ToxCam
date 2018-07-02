@@ -113,20 +113,20 @@ jobs:
             cd "$WRKDIR";cd libav
             cd "$WRKDIR";cd libav;git checkout v12.3
             cd "$WRKDIR";cd libav;./configure --prefix=/home/ubuntu/installdest_linux/ --disable-devices --disable-programs \
---disable-doc --disable-avdevice --disable-avformat \
---disable-swscale \
---disable-avfilter --disable-network --disable-everything \
---disable-bzlib \
---disable-libxcb-shm \
---disable-libxcb-xfixes \
---enable-parser=h264 \
---enable-runtime-cpudetect \
---enable-omx-rpi --enable-mmal \
---enable-omx \
---enable-decoder=h264_mmal \
---enable-decoder=h264_vdpau \
---enable-vdpau \
---enable-gpl --enable-decoder=h264
+              --disable-doc --disable-avdevice --disable-avformat \
+              --disable-swscale \
+              --disable-avfilter --disable-network --disable-everything \
+              --disable-bzlib \
+              --disable-libxcb-shm \
+              --disable-libxcb-xfixes \
+              --enable-parser=h264 \
+              --enable-runtime-cpudetect \
+              --enable-omx-rpi --enable-mmal \
+              --enable-omx \
+              --enable-decoder=h264_mmal \
+              --enable-decoder=h264_vdpau \
+              --enable-vdpau \
+              --enable-gpl --enable-decoder=h264
             cd "$WRKDIR";cd libav;make clean
             cd "$WRKDIR";cd libav;make -j4
             cd "$WRKDIR";cd libav;make install
