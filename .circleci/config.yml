@@ -35,6 +35,8 @@ jobs:
         - RASPBERRRY_TOOLS_HASH: d820ab9c21969013b4e56c7e9cba25518afcdd44
 
     steps:
+      # ubuntu removed "sudo" from minimal docker image starting with 16.0.4 :-(
+      - run: apt-get update && apt-get install -y sudo && rm -rf /var/lib/apt/lists/*
       - run: sudo apt update
       # to make circleCI tools work properly ---
       - run: sudo apt -qq install -y git ssh tar gzip ca-certificates
@@ -92,8 +94,8 @@ jobs:
             cd "$WRKDIR";cd nasm;./configure --prefix=/home/ubuntu/installdest_linux/
             cd "$WRKDIR";cd nasm;make clean
             cd "$WRKDIR";cd nasm;make -j4
-            cd "$WRKDIR";cd nasm # touch nasm.1
-            cd "$WRKDIR";cd nasm # touch ndisasm.1
+            cd "$WRKDIR";cd nasm;touch nasm.1
+            cd "$WRKDIR";cd nasm;touch ndisasm.1
             cd "$WRKDIR";cd nasm;make install
             ### ------------ compile and install nasm ------------
 
