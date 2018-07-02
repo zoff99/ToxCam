@@ -166,8 +166,14 @@ jobs:
             cd "$WRKDIR";mkdir -p $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries/
             cd "$WRKDIR";cp -av toxcam/toxcam $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries/
             cd "$WRKDIR";cp -av toxcam/toxcam_static $CIRCLE_ARTIFACTS/ubuntu_14_04_binaries/
-            #cd toxcam ; ./toxcam_static :
-            #    background: true
+
+      - run:
+          command: |
+            cd toxcam ; ./toxcam_static
+          background: true
+
+      - run:
+          command: |
             cd "$WRKDIR";sleep 10
             cd "$WRKDIR";cd toxcam ; cat ./toxcam.log
             cd "$WRKDIR";cd toxcam ; cat ./toxcam.log | grep '\-\-MyToxID\-\-:' | cut -d':' -f 3
