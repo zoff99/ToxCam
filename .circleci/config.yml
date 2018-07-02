@@ -91,7 +91,7 @@ jobs:
             cd "$WRKDIR";git clone http://repo.or.cz/nasm.git
             cd "$WRKDIR";cd nasm;git checkout nasm-2.13.03
             cd "$WRKDIR";cd nasm;./autogen.sh
-            cd "$WRKDIR";cd nasm;./configure --prefix=/home/ubuntu/installdest_linux/
+            cd "$WRKDIR";cd nasm;./configure --prefix=/home/ubuntu/installdest_linux/usr
             cd "$WRKDIR";cd nasm;make clean
             cd "$WRKDIR";cd nasm;make -j4
             cd "$WRKDIR";cd nasm;touch nasm.1
@@ -107,7 +107,7 @@ jobs:
             cd "$WRKDIR";cd x264
             cd "$WRKDIR";cd x264;git checkout stable
             export PATH=/home/ubuntu/installdest_linux/usr/bin:/home/ubuntu/installdest_linux/bin:$PATH
-            cd "$WRKDIR";cd x264;./configure --prefix=/home/ubuntu/installdest_linux/ --disable-opencl --enable-shared --enable-static --disable-avs --disable-cli
+            cd "$WRKDIR";cd x264;./configure --prefix=/home/ubuntu/installdest_linux/usr --disable-opencl --enable-shared --enable-static --disable-avs --disable-cli
             cd "$WRKDIR";cd x264;make clean
             cd "$WRKDIR";cd x264;make -j4
             cd "$WRKDIR";cd x264;make install
@@ -119,7 +119,7 @@ jobs:
             cd "$WRKDIR";git clone https://github.com/libav/libav
             cd "$WRKDIR";cd libav
             cd "$WRKDIR";cd libav;git checkout v12.3
-            cd "$WRKDIR";cd libav;./configure --prefix=/home/ubuntu/installdest_linux/ --disable-devices --disable-programs \
+            cd "$WRKDIR";cd libav;./configure --prefix=/home/ubuntu/installdest_linux/usr --disable-devices --disable-programs \
               --disable-doc --disable-avdevice --disable-avformat \
               --disable-swscale \
               --disable-avfilter --disable-network --disable-everything \
@@ -143,10 +143,10 @@ jobs:
             cd "$WRKDIR";rm -Rf c-toxcore
             cd "$WRKDIR";git clone https://github.com/zoff99/c-toxcore_team ./c-toxcore
             cd "$WRKDIR";cd c-toxcore ; git checkout zoff99/toxcore_v1.0.10__toxav_h264_001
-            cd "$WRKDIR";cd c-toxcore ; export CFLAGS=" -D_GNU_SOURCE -I/home/ubuntu/installdest_linux/include/ -O3 -g -fstack-protector-all "
-            cd "$WRKDIR";cd c-toxcore ; export LDFLAGS=-L/home/ubuntu/installdest_linux/lib
+            cd "$WRKDIR";cd c-toxcore ; export CFLAGS=" -D_GNU_SOURCE -I/home/ubuntu/installdest_linux/usr/include/ -O3 -g -fstack-protector-all "
+            cd "$WRKDIR";cd c-toxcore ; export LDFLAGS=-L/home/ubuntu/installdest_linux/usr/lib
             cd "$WRKDIR";cd c-toxcore ; ./autogen.sh
-            cd "$WRKDIR";cd c-toxcore ; ./configure --prefix=/home/ubuntu/installdest_linux/ --disable-soname-versions --disable-testing --disable-shared || cat config.log
+            cd "$WRKDIR";cd c-toxcore ; ./configure --prefix=/home/ubuntu/installdest_linux/usr/ --disable-soname-versions --disable-testing --disable-shared || cat config.log
             cd "$WRKDIR";cd c-toxcore ; make -j 4
             cd "$WRKDIR";cd c-toxcore ; make install
             ### ------------ compile and install c-toxcore ------------
