@@ -53,7 +53,7 @@ jobs:
            sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y libjpeg-dev
            sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y libpulse-dev
            sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y libconfig-dev
-           sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y astyle
+           sudo DEBIAN_FRONTEND=noninteractive apt-get -qq install -y astyle gawk sed bc
            sudo bash -c "echo '::1             localhost ipv6-localhost ipv6-loopback' >> /etc/hosts"
            gcc --version
            astyle --version
@@ -146,7 +146,7 @@ jobs:
             cd "$WRKDIR";cd c-toxcore ; export CFLAGS=" $CF2 -D_GNU_SOURCE -I/home/ubuntu/installdest_linux/include/ -O3 -g -fstack-protector-all "
             cd "$WRKDIR";cd c-toxcore ; export LDFLAGS=-L/home/ubuntu/installdest_linux/lib
             cd "$WRKDIR";cd c-toxcore ; ./autogen.sh
-            cd "$WRKDIR";cd c-toxcore ; ./configure --prefix=/home/ubuntu/installdest_linux/ --disable-soname-versions --disable-testing --disable-shared
+            cd "$WRKDIR";cd c-toxcore ; ./configure --prefix=/home/ubuntu/installdest_linux/ --disable-soname-versions --disable-testing --disable-shared || cat config.log
             cd "$WRKDIR";cd c-toxcore ; make -j 4
             cd "$WRKDIR";cd c-toxcore ; make install
             ### ------------ compile and install c-toxcore ------------
