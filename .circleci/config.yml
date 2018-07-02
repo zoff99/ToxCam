@@ -142,7 +142,7 @@ jobs:
             ### ------------ compile and install c-toxcore ------------
             cd "$WRKDIR";rm -Rf c-toxcore
             cd "$WRKDIR";git clone https://github.com/zoff99/c-toxcore_team ./c-toxcore
-            exeport PKG_CONFIG_PATH=/home/ubuntu/installdest_linux/usr/lib/pkgconfig
+            export PKG_CONFIG_PATH=/home/ubuntu/installdest_linux/usr/lib/pkgconfig
             cd "$WRKDIR";cd c-toxcore ; git checkout zoff99/toxcore_v1.0.10__toxav_h264_001
             cd "$WRKDIR";cd c-toxcore ; export CFLAGS=" -D_GNU_SOURCE -I/home/ubuntu/installdest_linux/usr/include/ -O3 -g -fstack-protector-all "
             cd "$WRKDIR";cd c-toxcore ; export LDFLAGS=-L/home/ubuntu/installdest_linux/usr/lib
