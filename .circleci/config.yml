@@ -128,9 +128,6 @@ jobs:
               --disable-libxcb-xfixes \
               --enable-parser=h264 \
               --enable-runtime-cpudetect \
-              --enable-omx-rpi --enable-mmal \
-              --enable-omx \
-              --enable-decoder=h264_mmal \
               --enable-decoder=h264_vdpau \
               --enable-vdpau \
               --enable-gpl --enable-decoder=h264
