@@ -106,6 +106,7 @@ jobs:
             cd "$WRKDIR";git clone git://git.videolan.org/x264.git
             cd "$WRKDIR";cd x264
             cd "$WRKDIR";cd x264;git checkout stable
+            export PATH=/home/ubuntu/installdest_linux/usr/bin:/home/ubuntu/installdest_linux/bin:$PATH
             cd "$WRKDIR";cd x264;./configure --prefix=/home/ubuntu/installdest_linux/ --disable-opencl --enable-shared --enable-static --disable-avs --disable-cli
             cd "$WRKDIR";cd x264;make clean
             cd "$WRKDIR";cd x264;make -j4
