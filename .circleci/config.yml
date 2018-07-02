@@ -36,7 +36,7 @@ jobs:
 
     steps:
       # ubuntu removed "sudo" from minimal docker image starting with 16.0.4 :-(
-      - run: apt-get update && apt-get install -y sudo && rm -rf /var/lib/apt/lists/*
+      - run: apt-get update && apt-get install -y sudo lsb-release && rm -rf /var/lib/apt/lists/*
       - run: sudo apt update
       # to make circleCI tools work properly ---
       - run: sudo apt -qq install -y git ssh tar gzip ca-certificates
