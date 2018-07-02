@@ -65,21 +65,9 @@ jobs:
 
       - run:
           command: |
-            ### submodules ----------------
-            cd "$WRKDIR";git submodule add --force https://github.com/TokTok/c-toxcore c-toxcore ; echo ok
-            cd "$WRKDIR";git submodule add --force https://github.com/jedisct1/libsodium libsodium ; echo ok
-            cd "$WRKDIR";git submodule init ; git submodule update ; echo ok
-            # -- sometimes submodule can't find commit hash, whatever ------
-            cd "$WRKDIR";rm -Rf c-toxcore ; git clone "$CTOXCORE_URL"
-            # -- sometimes submodule can't find commit hash, whatever ------
-            cd "$WRKDIR";cd c-toxcore/ ; git checkout "$CTOXCORE_VERSION_HASH"
-            cd "$WRKDIR";cd libsodium/ ; git checkout $LIBSODIUM_VERSION
-            ### submodules ----------------
-
-
-      - run:
-          command: |
             ### ------- compile and install libsodium -------
+            cd "$WRKDIR";rm -Rf libsodium
+            cd "$WRKDIR";git clone --depth=1 --branch="$LIBSODIUM_BRANCH" https://github.com/jedisct1/libsodium.git ./libsodium
             cd "$WRKDIR";cd libsodium/ ; ./autogen.sh
             cd "$WRKDIR";cd libsodium/ ; ./configure && make check
             cd "$WRKDIR";cd libsodium/ ; sudo bash -c "printf 'y\naa\n\n' | checkinstall --install --pkgname libsodium --pkgversion 1.0.0 --nodoc --deldesc=no --pkglicense='GPL2'"
@@ -136,6 +124,9 @@ jobs:
       - run:
           command: |
             ### ------------ compile and install c-toxcore ------------
+            cd "$WRKDIR";rm -Rf c-toxcore
+            cd "$WRKDIR";git clone https://github.com/zoff99/c-toxcore_team ./c-toxcore
+            cd "$WRKDIR";cd c-toxcore ; git checkout zoff99/toxcore_v1.0.10__toxav_h264_001
             cd "$WRKDIR";cd c-toxcore ; export CFLAGS=" $CF2 -D_GNU_SOURCE -I/home/ubuntu/installdest_linux/include/ -O3 -g -fstack-protector-all "
             cd "$WRKDIR";cd c-toxcore ; export LDFLAGS=-L/home/ubuntu/installdest_linux/lib
             cd "$WRKDIR";cd c-toxcore ; ./autogen.sh
