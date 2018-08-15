@@ -44,7 +44,9 @@
 
 #include <sodium/utils.h>
 #include <tox/tox.h>
+#ifdef TOX_HAVE_TOXUTIL
 #include <tox/toxutil.h>
+#endif
 #include <tox/toxav.h>
 
 
@@ -60,32 +62,6 @@
  */
 #ifndef TOXCOMPAT_H_
 #define TOXCOMPAT_H_
-
-#if TOX_VERSION_IS_API_COMPATIBLE(0, 2, 0)
-static void toxav_callback_bit_rate_status(ToxAV *av,
-        void *callback, void *user_data)
-{
-    // dummy function
-}
-
-#define TOXAV_ERR_BIT_RATE_SET_INVALID_AUDIO_BIT_RATE (TOXAV_ERR_BIT_RATE_SET_INVALID_BIT_RATE)
-#define TOXAV_ERR_BIT_RATE_SET_INVALID_VIDEO_BIT_RATE (TOXAV_ERR_BIT_RATE_SET_INVALID_BIT_RATE)
-
-static bool toxav_bit_rate_set(ToxAV *av, uint32_t friend_number, int32_t audio_bit_rate,
-                               int32_t video_bit_rate, TOXAV_ERR_BIT_RATE_SET *error)
-{
-    bool res = toxav_video_set_bit_rate(av, friend_number, video_bit_rate, error);
-
-    if (*error == TOXAV_ERR_BIT_RATE_SET_INVALID_BIT_RATE)
-    {
-        *error = TOXAV_ERR_BIT_RATE_SET_INVALID_VIDEO_BIT_RATE;
-    }
-
-    return res;
-}
-#else
-// no need to fake the function
-#endif
 
 #endif
 /*
@@ -702,12 +678,20 @@ Tox *create_tox()
         options.savedata_type = TOX_SAVEDATA_TYPE_TOX_SAVE;
         options.savedata_data = savedata;
         options.savedata_length = fsize;
+#ifdef TOX_HAVE_TOXUTIL
         tox = tox_utils_new(&options, NULL);
+#else
+        tox = tox_new(&options, NULL);
+#endif
         free((void *)savedata);
     }
     else
     {
+#ifdef TOX_HAVE_TOXUTIL
         tox = tox_utils_new(&options, NULL);
+#else
+        tox = tox_new(&options, NULL);
+#endif
     }
 
     bool local_discovery_enabled = tox_options_get_local_discovery_enabled(&options);
@@ -1751,7 +1735,11 @@ void run_cmd_return_output(const char *command, char *output, int lastline)
 void remove_friend(Tox *tox, uint32_t friend_number)
 {
     TOX_ERR_FRIEND_DELETE error;
+#ifdef TOX_HAVE_TOXUTIL
     tox_utils_friend_delete(tox, friend_number, &error);
+#else
+    tox_friend_delete(tox, friend_number, &error);
+#endif
 }
 
 void cmd_delfriend(Tox *tox, uint32_t friend_number, const char *message)
@@ -3181,12 +3169,14 @@ static void t_toxav_call_cb(ToxAV *av, uint32_t friend_number, bool audio_enable
         dbg(9, "Handling CALL callback friendnum=%d audio_bitrate=%d video_bitrate=%d\n", (int)friend_number,
             (int)audio_bitrate, (int)video_bitrate);
         toxav_answer(av, friend_number, audio_bitrate, video_bitrate, &err);
+#ifdef HAVE_TOXAV_OPTION_SET
         TOXAV_ERR_OPTION_SET error2;
         // toxav_option_set(av, friend_number, TOXAV_ENCODER_VP8_QUALITY, (int32_t)TOXAV_ENCODER_VP8_QUALITY_NORMAL, &error2);
         toxav_option_set(av, friend_number, TOXAV_ENCODER_RC_MAX_QUANTIZER, (int32_t)RC_MAX_QUANTIZER, &error2);
         dbg(9, "Call with friend state:(1)set TOXAV_ENCODER_RC_MAX_QUANTIZER to %d res=%d\n",
             (int)RC_MAX_QUANTIZER,
             (int)error2);
+#endif
     }
 }
 
@@ -3224,12 +3214,14 @@ static void t_toxav_call_state_cb(ToxAV *av, uint32_t friend_number, uint32_t st
         dbg(9, "Call with friend state:TOXAV_FRIEND_CALL_STATE_ACCEPTING_V\n");
     }
 
+#ifdef HAVE_TOXAV_OPTION_SET
     TOXAV_ERR_OPTION_SET error2;
     // toxav_option_set(av, friend_number, TOXAV_ENCODER_VP8_QUALITY, (int32_t)TOXAV_ENCODER_VP8_QUALITY_NORMAL, &error2);
     toxav_option_set(av, friend_number, TOXAV_ENCODER_RC_MAX_QUANTIZER, (int32_t)RC_MAX_QUANTIZER, &error2);
     dbg(9, "Call with friend state:(0)set TOXAV_ENCODER_RC_MAX_QUANTIZER to %d res=%d\n",
         (int)RC_MAX_QUANTIZER,
         (int)error2);
+#endif
     dbg(9, "t_toxav_call_state_cb:002\n");
     int send_audio = (state & TOXAV_FRIEND_CALL_STATE_SENDING_A) && (state & TOXAV_FRIEND_CALL_STATE_ACCEPTING_A);
     int send_video = state & TOXAV_FRIEND_CALL_STATE_SENDING_V && (state & TOXAV_FRIEND_CALL_STATE_ACCEPTING_V);
@@ -4172,9 +4164,13 @@ int main(int argc, char *argv[])
     tox_callback_file_recv_chunk(tox, on_file_recv_chunk);
     // init callbacks ----------------------------------
     // init toxutil callbacks ----------------------------------
+#ifdef TOX_HAVE_TOXUTIL
     tox_utils_callback_friend_connection_status(tox, friendlist_onConnectionChange);
     tox_callback_friend_connection_status(tox, tox_utils_friend_connection_status_cb);
     tox_callback_friend_lossless_packet(tox, tox_utils_friend_lossless_packet_cb);
+#else
+    tox_callback_friend_connection_status(tox, friendlist_onConnectionChange);
+#endif
     // init toxutil callbacks ----------------------------------
     update_savedata_file(tox);
     load_friendlist(tox);
@@ -4226,7 +4222,7 @@ int main(int argc, char *argv[])
     // init AV callbacks -------------------------------
     toxav_callback_call(mytox_av, t_toxav_call_cb, &mytox_CC);
     toxav_callback_call_state(mytox_av, t_toxav_call_state_cb, &mytox_CC);
-    toxav_callback_bit_rate_status(mytox_av, t_toxav_bit_rate_status_cb, &mytox_CC);
+    //toxav_callback_bit_rate_status(mytox_av, t_toxav_bit_rate_status_cb, &mytox_CC);
     toxav_callback_video_receive_frame(mytox_av, t_toxav_receive_video_frame_cb, &mytox_CC);
     toxav_callback_audio_receive_frame(mytox_av, t_toxav_receive_audio_frame_cb, &mytox_CC);
     // init AV callbacks -------------------------------
@@ -4288,7 +4284,11 @@ int main(int argc, char *argv[])
     kill_all_file_transfers(tox);
     close_cam();
     toxav_kill(mytox_av);
+#ifdef TOX_HAVE_TOXUTIL
     tox_utils_kill(tox);
+#else
+    tox_kill(tox);
+#endif
 
     if (logfile)
     {
