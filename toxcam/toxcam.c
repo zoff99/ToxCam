@@ -21,6 +21,8 @@
  *
  */
 
+#define _GNU_SOURCE
+
 
 #include <ctype.h>
 #include <stdio.h>
@@ -71,6 +73,10 @@
  */
 
 
+// --------- change nospam ---------
+// #define CHANGE_NOSPAM_REGULARLY 1
+// --------- change nospam ---------
+
 
 
 
@@ -96,12 +102,13 @@ static struct v4lconvert_data *v4lconvert_data;
 #endif
 
 
+
 // ----------- version -----------
 // ----------- version -----------
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 99
-#define VERSION_PATCH 17
-static const char global_version_string[] = "0.99.17";
+#define VERSION_PATCH 19
+static const char global_version_string[] = "0.99.19";
 // ----------- version -----------
 // ----------- version -----------
 
@@ -348,6 +355,9 @@ uint32_t friend_to_send_video_to = -1;
 // -- hardcoded --
 
 int video_call_enabled = 1;
+uint32_t global_last_change_nospam_ts = 0;
+#define CHANGE_NOSPAM_REGULAR_INTERVAL_SECS (3600) // 1h
+
 
 TOX_CONNECTION my_connection_status = TOX_CONNECTION_NONE;
 FILE *logfile = NULL;
@@ -439,6 +449,20 @@ void dbg(int level, const char *fmt, ...)
     }
 
     // dbg(9, "free:002\n");
+}
+
+
+uint32_t generate_random_uint32()
+{
+    // HINT: this is not perfectly randon, FIX ME!
+    uint32_t r;
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    srand((time.tv_sec * 1000) + (time.tv_usec / 1000));
+    rand();
+    rand();
+    r = rand();
+    return r;
 }
 
 
@@ -1670,6 +1694,15 @@ void send_text_message_to_friend(Tox *tox, uint32_t friend_number, const char *f
     tox_friend_send_message(tox, friend_number, TOX_MESSAGE_TYPE_NORMAL, (uint8_t *)msg2, length, NULL);
 }
 
+void change_nospam_to_new_random_value(Tox *tox)
+{
+    dbg(9, "change_nospam_to_new_random_value\n");
+    global_last_change_nospam_ts = (uint32_t)get_unix_time();
+    tox_self_set_nospam(tox, generate_random_uint32());
+    update_savedata_file(tox);
+    print_tox_id(tox);
+}
+
 
 void friend_request_cb(Tox *tox, const uint8_t *public_key, const uint8_t *message, size_t length,
                        void *user_data)
@@ -1906,12 +1939,12 @@ void cmd_vcm(Tox *tox, uint32_t friend_number)
     if (global_video_active == 1)
     {
         send_text_message_to_friend(tox, friend_number, "there is already a video session active");
-        dbg(9 , "fnum=%d msg=there is already a video session active\n", (int)friend_number);
+        dbg(9, "fnum=%d msg=there is already a video session active\n", (int)friend_number);
     }
     else
     {
         send_text_message_to_friend(tox, friend_number, "i am trying to send my video ...");
-        dbg(9 , "fnum=%d msg=i am trying to send my video ...\n", (int)friend_number);
+        dbg(9, "fnum=%d msg=i am trying to send my video ...\n", (int)friend_number);
 
         if (mytox_av != NULL)
         {
@@ -4237,6 +4270,7 @@ int main(int argc, char *argv[])
     }
     else
     {
+        pthread_setname_np(tid[0], "t_av");
         dbg(2, "AV iterate Thread successfully created");
     }
 
@@ -4249,6 +4283,7 @@ int main(int argc, char *argv[])
     else
     {
         dbg(2, "AV video Thread successfully created");
+        pthread_setname_np(tid[1], "t_video_av");
     }
 
     // start toxav thread ------------------------------
@@ -4261,12 +4296,21 @@ int main(int argc, char *argv[])
     // start audio recoding stuff ----------------------
     tox_loop_running = 1;
     signal(SIGINT, sigint_handler);
+    pthread_setname_np(pthread_self(), "t_main");
 
     while (tox_loop_running)
     {
         tox_iterate(tox, NULL);
         // usleep(tox_iteration_interval(tox) * 1000);
         usleep(5 * 1000); // hardcode to 5ms
+#ifdef CHANGE_NOSPAM_REGULARLY
+
+        if ((uint32_t)(global_last_change_nospam_ts + CHANGE_NOSPAM_REGULAR_INTERVAL_SECS) < (uint32_t)get_unix_time())
+        {
+            change_nospam_to_new_random_value(tox);
+        }
+
+#endif
 
         if (global_want_restart == 1)
         {
