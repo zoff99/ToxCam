@@ -19,33 +19,30 @@ echo $_INST_
 
 cd $_HOME_/toxcam
 
-
-if [ 1 == 1 ]; then
-
-gcc -O3 -g -Wall \
--o toxcam_static \
-toxcam.c \
-rb.c \
--static -std=gnu99 \
--L$_INST_/lib -I$_INST_/include/ \
--lsodium \
--ltoxcore -ltoxav \
--lsodium -lpthread -static-libgcc -static-libstdc++ -lopus \
--lvpx -lm -lpthread -lv4lconvert -ljpeg -lm -lrt -lpthread
-
-else
+echo $_INST_/lib/
 
 gcc \
--fsanitize=address \
 -O3 -g -Wall \
 -o toxcam \
 toxcam.c \
 rb.c \
 -std=gnu99 \
 -L$_INST_/lib -I$_INST_/include/ \
--lsodium \
--ltoxcore -ltoxav \
--lsodium -lpthread -static-libgcc -static-libstdc++ -lopus \
--lvpx -lm -lpthread -lv4lconvert -ljpeg -lm -lrt -lpthread
+-std=gnu99 \
+-L$_HOME_/inst/lib/ \
+$_INST_/lib/libtoxcore.a \
+$_INST_/lib/libtoxav.a \
+-lrt -lm \
+$_INST_/lib/libopus.a \
+$_INST_/lib/libvpx.a \
+$_INST_/lib/libx264.a \
+$_INST_/lib/libavcodec.a \
+$_INST_/lib/libswresample.a \
+$_INST_/lib/libavfilter.a \
+$_INST_/lib/libavutil.a \
+$_INST_/lib/libsodium.a \
+-lasound \
+-ldl \
+-lz \
+-lpthread -lv4lconvert
 
-fi
