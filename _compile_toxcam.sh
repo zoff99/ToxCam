@@ -20,6 +20,7 @@ echo $_INST_
 cd $_HOME_/toxcam
 
 echo $_INST_/lib/
+echo $_INST_/include/
 
 gcc \
 -O3 -g -Wall \
