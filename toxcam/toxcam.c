@@ -345,7 +345,11 @@ const char *shell_cmd__get_cpu_temp = "./scripts/get_cpu_temp.sh 2> /dev/null";
 const char *shell_cmd__get_gpu_temp = "./scripts/get_gpu_temp.sh 2> /dev/null";
 const char *shell_cmd__get_my_number_of_open_files = "cat /proc/sys/fs/file-nr 2> /dev/null";
 const char *shell_cmd__get_video_fps = "./scripts/get_video_fps.sh 2> /dev/null";
+#if 0
 const char *shell_cmd__get_video_fps_win = ".\scripts\get_video_fps.bat 2> NUL";
+#else
+const char *shell_cmd__get_video_fps_win = ".\aaa 2> NUL";
+#endif
 int global_want_restart = 0;
 const char *global_timestamp_format = "%H:%M:%S";
 const char *global_long_timestamp_format = "%Y-%m-%d %H:%M:%S";
@@ -1974,11 +1978,11 @@ void cmd_vbr(Tox *tox, uint32_t friend_number, char *message)
 
             if (mytox_av != NULL)
             {
-                toxav_bit_rate_set(mytox_av, friend_number, global_audio_bit_rate, global_video_bit_rate, NULL);
+                // toxav_bit_rate_set(mytox_av, friend_number, global_audio_bit_rate, global_video_bit_rate, NULL);
 
                 if (friend_to_send_video_to != -1)
                 {
-                    toxav_bit_rate_set(mytox_av, friend_to_send_video_to, global_audio_bit_rate, global_video_bit_rate, NULL);
+                    // toxav_bit_rate_set(mytox_av, friend_to_send_video_to, global_audio_bit_rate, global_video_bit_rate, NULL);
                 }
 
                 dbg(9, "setting video bitrate to: %d\n", (int)global_video_bit_rate);
@@ -3354,7 +3358,7 @@ static void t_toxav_bit_rate_status_cb(ToxAV *av, uint32_t friend_number,
         video_bit_rate_ = DEFAULT_GLOBAL_MIN_VID_BITRATE;
     }
 
-    toxav_bit_rate_set(av, friend_number, audio_bit_rate, video_bit_rate_, &error);
+    // toxav_bit_rate_set(av, friend_number, audio_bit_rate, video_bit_rate_, &error);
 
     if (error != 0)
     {
@@ -4071,10 +4075,10 @@ void *thread_video_av(void *data)
 
     while (toxav_video_thread_stop != 1)
     {
-        pthread_mutex_lock(&av_thread_lock);
+        // pthread_mutex_lock(&av_thread_lock);
         toxav_iterate(av);
         // dbg(9, "AV video Thread #%d running ...", (int) id);
-        pthread_mutex_unlock(&av_thread_lock);
+        // pthread_mutex_unlock(&av_thread_lock);
         usleep(toxav_iteration_interval(av) * 1000);
     }
 
@@ -4776,7 +4780,7 @@ int main(int argc, char *argv[])
     // init AV callbacks -------------------------------
     toxav_callback_call(mytox_av, t_toxav_call_cb, &mytox_CC);
     toxav_callback_call_state(mytox_av, t_toxav_call_state_cb, &mytox_CC);
-    toxav_callback_bit_rate_status(mytox_av, t_toxav_bit_rate_status_cb, &mytox_CC);
+    // toxav_callback_bit_rate_status(mytox_av, t_toxav_bit_rate_status_cb, &mytox_CC);
     toxav_callback_video_receive_frame(mytox_av, t_toxav_receive_video_frame_cb, &mytox_CC);
     toxav_callback_audio_receive_frame(mytox_av, t_toxav_receive_audio_frame_cb, &mytox_CC);
     // init AV callbacks -------------------------------
