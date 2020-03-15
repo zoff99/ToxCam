@@ -107,18 +107,6 @@ double drand48()
 
 
 
-#if TOX_VERSION_IS_API_COMPATIBLE(0, 2, 0)
-void toxav_callback_bit_rate_status(ToxAV *av,
-     void *callback, void *user_data)
-{
-        // dummy function
-}
-#else
-    // no need to fake the function
-#endif
-
-
-
 #ifndef _IS_PLATFORM_WIN_
 #define V4LCONVERT 1
 #endif
