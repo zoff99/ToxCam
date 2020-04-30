@@ -49,10 +49,10 @@ if [ "$full""x" == "1x" ]; then
 
 
 cd $_HOME_/build
-# rm -Rf libav
-# git clone https://github.com/FFmpeg/FFmpeg libav
+rm -Rf libav
+git clone https://github.com/FFmpeg/FFmpeg libav
 cd libav
-# git checkout n4.2.1
+git checkout n4.2.1
 export CFLAGS=" -g -O3 -I$_INST_/include/ -fPIC -Wall -Wextra "
 export CXXFLAGS="-fPIC"
 export LDFLAGS=" -O3 -L$_INST_/lib  -fPIC"
