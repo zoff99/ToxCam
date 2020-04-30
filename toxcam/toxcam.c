@@ -1,7 +1,7 @@
 /*
  *
  * Zoff <zoff@zoff.cc>
- * in 2017
+ * in 2017 - 2020
  *
  * dirty hack (echobot and toxic were used as blueprint)
  *
@@ -131,8 +131,8 @@ static struct v4lconvert_data *v4lconvert_data;
 // ----------- version -----------
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 99
-#define VERSION_PATCH 14
-static const char global_version_string[] = "0.99.14";
+#define VERSION_PATCH 15
+static const char global_version_string[] = "0.99.15";
 // ----------- version -----------
 // ----------- version -----------
 
@@ -366,6 +366,7 @@ struct v4l2_format format;
 struct v4l2_format dest_format;
 #endif
 
+
 toxcam_av_video_frame av_video_frame;
 vpx_image_t input;
 int global_video_active = 0;
@@ -381,7 +382,7 @@ int global_ms_to_beep = -1;
 int gen_sampling_rate;
 int gen_channels;
 int gen_sample_count;
-int gen_audio_length_in_ms = 40; // 40ms PCM pieces
+int gen_audio_length_in_ms = 40; // XY ms PCM pieces
 int first_audio_frame_sent = 0;
 BWRingBuffer *pcm_rb = NULL;
 double current_audio_pts_ms = 0;
@@ -3972,10 +3973,10 @@ void *thread_audio_av(void *data)
 
     while (toxav_audio_thread_stop != 1)
     {
-        if (global_video_active == 1)
-        {
-            if (friend_to_send_video_to != -1)
-            {
+        // if (global_video_active == 1)
+        //{
+            // if (friend_to_send_video_to != -1)
+            //{
                 // dbg(9, "Audio:CLA:001\n");
                 int16_t *gen_pcm_buffer = calloc(1, pcm_buffer_size);
                 // dbg(9, "Audio:CLA:002 buf=%p piep=%p\n", gen_pcm_buffer, pipein);
@@ -4012,6 +4013,7 @@ void *thread_audio_av(void *data)
 
                     if (p)
                     {
+                        dbg(9, "Audio:CL:0101 bw_rb_write:ERROR:1\n");
                         free(p);
                     }
                 }
@@ -4026,17 +4028,18 @@ void *thread_audio_av(void *data)
 
                     if (p)
                     {
+                        dbg(9, "Audio:CL:0101 bw_rb_write:ERROR:2\n");
                         free(p);
                     }
                 }
-            }
+            //}
 
             yieldcpu(DEFAULT_AUDIO_SLEEP_MS / 2);
-        }
-        else
-        {
-            yieldcpu(100);
-        }
+        //}
+        //else
+        //{
+        //    yieldcpu(100);
+        //}
     }
 
     fflush(pipein);
@@ -4072,15 +4075,6 @@ void *thread_video_av(void *data)
     }
 
     dbg(2, "AV video Thread #%d: starting\n", (int) id);
-
-    while (toxav_video_thread_stop != 1)
-    {
-        // pthread_mutex_lock(&av_thread_lock);
-        toxav_iterate(av);
-        // dbg(9, "AV video Thread #%d running ...", (int) id);
-        // pthread_mutex_unlock(&av_thread_lock);
-        usleep(toxav_iteration_interval(av) * 1000);
-    }
 
     dbg(2, "ToxVideo:Clean video thread exit!\n");
     return NULL;
@@ -4566,6 +4560,119 @@ void init_sound_device()
 // ------------------ alsa recording ------------------
 
 
+
+
+
+
+// --------- group ---------
+// --------- group ---------
+// --------- group ---------
+
+void group_audio_callback_func(void *tox, uint32_t groupnumber, uint32_t peernumber,
+                               const int16_t *pcm, unsigned int samples, uint8_t channels, uint32_t
+                               sample_rate, void *userdata)
+{
+}
+
+
+void conference_invite_cb(Tox *tox, uint32_t friend_number, TOX_CONFERENCE_TYPE type, const uint8_t *cookie,
+                          size_t length, void *user_data)
+{
+    dbg(9, "conference_invite_cb:fnum=%d\n", friend_number);
+
+    dbg(0, "tox_conference_join:cookie length=%d\n", (int)length);
+    dbg(0, "tox_conference_join:cookie start byte=%d\n", (int)cookie[0]);
+    dbg(0, "tox_conference_join:cookie end byte=%d\n", (int)cookie[length - 1]);
+
+    int32_t res = toxav_join_av_groupchat(tox, friend_number, cookie, length, group_audio_callback_func, (void *)NULL);
+
+    dbg(9, "toxav_join_av_groupchat:res=%d\n", res);    
+    update_savedata_file(tox);
+}
+
+void conference_connected_cb(Tox *tox, uint32_t conference_number, void *user_data)
+{
+    dbg(9, "conference_connected_cb:num=%d\n", conference_number);
+    update_savedata_file(tox);
+}
+
+void send_audio_to_all_audio_groups(Tox *tox)
+{
+    if (!pcm_rb)
+    {
+        return;
+    }
+
+    uint32_t w;
+    uint32_t h;
+    int16_t *pcm_buffer = NULL;
+
+    if (bw_rb_size(pcm_rb) > 2)
+    {
+        bool res1 = bw_rb_read(pcm_rb, &pcm_buffer, &w, &h);
+
+        if (pcm_buffer)
+        {
+            size_t num_confs = tox_conference_get_chatlist_size(tox);
+            if (num_confs > 0)
+            {
+                size_t memsize = (num_confs * sizeof(uint32_t));
+                uint32_t *conferences_list = calloc(1, memsize);
+                if (conferences_list)
+                {
+                    tox_conference_get_chatlist(tox, conferences_list);
+
+                    int res;
+                    uint32_t  i;
+                    for(i=0;i<num_confs;i++)
+                    {                
+                        //dbg(9, "send_audio_to_all_audio_groups:007:conferences_list[i]=%d\n", (int)conferences_list[i]);
+                        res = toxav_group_send_audio(tox, (uint32_t)conferences_list[i], pcm_buffer, (size_t)gen_sample_count,
+                                                    (uint8_t)gen_channels, (uint32_t)gen_sampling_rate);
+                        //dbg(9, "send_audio_to_all_audio_groups:007a:%d,%d,%d\n", (uint32_t)gen_sample_count, (uint32_t)gen_channels, (uint32_t)gen_sampling_rate);
+                        //dbg(9, "send_audio_to_all_audio_groups:008:res=%d\n", res);
+                        //dbg(9, "send_audio_to_all_audio_groups:008:pcm:%d %d %d %d\n",
+                        //    (int)pcm_buffer[0],
+                        //    (int)pcm_buffer[1],
+                        //    (int)pcm_buffer[2],
+                        //    (int)pcm_buffer[3]);
+                    }
+
+                    free(conferences_list);
+                }
+            }
+
+            free(pcm_buffer);
+            pcm_buffer = NULL;
+        }
+    }
+}
+
+// --------- group ---------
+// --------- group ---------
+// --------- group ---------
+
+
+
+void randomish_string(char *str, size_t size)
+{
+    const char charset[] = "ABCDEF0123456789";
+
+    if (size)
+    {
+        srandom(time(NULL));
+        --size;
+
+        for (size_t n = 0; n < size; n++)
+        {
+            int key = rand() % (int)(sizeof charset - 1);
+            str[n] = charset[key];
+        }
+
+        str[size] = '\0';
+    }
+}
+
 void sigint_handler(int signo)
 {
     if (signo == SIGINT)
@@ -4712,9 +4819,24 @@ int main(int argc, char *argv[])
     dbg(9, "detected %d processors\n", cpu_cores);
     Tox *tox = create_tox();
     global_start_time = time(NULL);
-    const char *name = "AVStreamTest";
-    tox_self_set_name(tox, (uint8_t *)name, strlen(name), NULL);
-    const char *status_message = "This is Tox AVStreamTest";
+
+    const char *default_tox_name = "GroupAudioTest";
+
+    if (tox_self_get_name_size(tox) == 0)
+    {
+        uint32_t self_name_max_len = tox_max_name_length();
+        char self_name[1000];
+        CLEAR(self_name);
+        char self_name_random_part[8];
+        CLEAR(self_name_random_part);
+        randomish_string(self_name_random_part, 7);
+        dbg(9, "randomish_string=%s\n", self_name_random_part);
+        snprintf(self_name, (self_name_max_len - 1), "%s-%s", default_tox_name, self_name_random_part);
+        tox_self_set_name(tox, (uint8_t *)self_name, strlen(self_name), NULL);
+    }
+
+
+    const char *status_message = "This is Tox GroupAudioTest";
     tox_self_set_status_message(tox, (uint8_t *)status_message, strlen(status_message), NULL);
     Friends.max_idx = 0;
     bootstrap(tox);
@@ -4729,6 +4851,9 @@ int main(int argc, char *argv[])
     tox_callback_file_recv_control(tox, on_file_control);
     tox_callback_file_recv(tox, on_file_recv);
     tox_callback_file_recv_chunk(tox, on_file_recv_chunk);
+
+    tox_callback_conference_invite(tox, conference_invite_cb);
+    tox_callback_conference_connected(tox, conference_connected_cb);
     // init callbacks ----------------------------------
     update_savedata_file(tox);
     load_friendlist(tox);
@@ -4810,7 +4935,7 @@ int main(int argc, char *argv[])
         dbg(2, "AV video Thread successfully created\n");
     }
 
-    pcm_rb = bw_rb_new(10);
+    pcm_rb = bw_rb_new(50);
     toxav_audio_thread_stop = 0;
 
     if (pthread_create(&(tid[2]), NULL, thread_audio_av, (void *)mytox_av) != 0)
@@ -4842,10 +4967,42 @@ int main(int argc, char *argv[])
     tox_loop_running = 1;
     signal(SIGINT, sigint_handler);
 
+
+    // activate audio groups ----------------------
+    size_t num_confs = tox_conference_get_chatlist_size(tox);
+    if (num_confs > 0)
+    {
+        size_t memsize = (num_confs * sizeof(uint32_t));
+        uint32_t *conferences_list = calloc(1, memsize);
+        if (conferences_list)
+        {
+            tox_conference_get_chatlist(tox, conferences_list);
+
+            int res;
+            uint32_t  i;
+            for(i=0;i<num_confs;i++)
+            {                
+                res = toxav_groupchat_enable_av(tox, (uint32_t)conferences_list[i], group_audio_callback_func, (void *)NULL);
+                dbg(9, "activate audio group:%d:res=%d\n", conferences_list[i], res);
+            }
+
+            free(conferences_list);
+        }
+    }
+    // activate audio groups ----------------------
+
+    uint64_t last_sent_audio = tc_current_time_monotonic();
+    uint64_t tolerance = 0;
+
     while (tox_loop_running)
     {
         tox_iterate(tox, NULL);
-        usleep(tox_iteration_interval(tox) * 1000);
+        if ((last_sent_audio + (gen_audio_length_in_ms - tolerance)) <= tc_current_time_monotonic())
+        {
+            send_audio_to_all_audio_groups(tox);
+            last_sent_audio = (tc_current_time_monotonic() + tolerance);
+        }
+        usleep(2 * 1000);
 
         if (global_want_restart == 1)
         {
