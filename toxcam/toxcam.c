@@ -3472,310 +3472,7 @@ void *thread_av(void *data)
 {
     ToxAV *av = (ToxAV *) data;
     pthread_t id = pthread_self();
-    pthread_mutex_t av_thread_lock;
-
-    if (pthread_mutex_init(&av_thread_lock, NULL) != 0)
-    {
-        dbg(0, "Error creating av_thread_lock\n");
-    }
-    else
-    {
-        dbg(2, "av_thread_lock created successfully\n");
-    }
-
     dbg(2, "AV Thread #%d: starting\n", (int) id);
-
-    if (video_call_enabled == 1)
-    {
-        global_cam_device_fd = init_cam();
-        dbg(2, "AV Thread #%d: init cam\n", (int) id);
-        set_av_video_frame();
-        // start streaming
-        v4l_startread();
-    }
-
-    char input_video_file[] = "./video.vid"; // name hardcoded!! DO NOT CHANGE !!
-    int ww = 1280; // this will be autodetected
-    int hh = 720; // this will be autodetected
-    double fps = 24; // this will be autodetected
-    char cmd[1000];
-    char output_str[1000];
-    CLEAR(cmd);
-
-#ifdef _IS_PLATFORM_WIN_
-    snprintf(cmd, sizeof(cmd),
-             "ffprobe.exe -v error -of flat=s=_ -select_streams v:0 -show_entries stream=width %s",
-             input_video_file);
-#else
-    snprintf(cmd, sizeof(cmd),
-             "ffprobe -v error -of flat=s=_ -select_streams v:0 -show_entries stream=width %s",
-             input_video_file);
-#endif
-    CLEAR(output_str);
-    run_cmd_return_output(cmd, output_str, 1);
-    dbg(9, "Video:res=%s\n", output_str);
-
-    if (strlen(output_str) > 0)
-    {
-        ww = get_number_in_string_nonnull(output_str, ww);
-    }
-
-    CLEAR(cmd);
-#ifdef _IS_PLATFORM_WIN_
-    snprintf(cmd, sizeof(cmd),
-             "ffprobe.exe -v error -of flat=s=_ -select_streams v:0 -show_entries stream=height %s",
-             input_video_file);
-#else
-    snprintf(cmd, sizeof(cmd),
-             "ffprobe -v error -of flat=s=_ -select_streams v:0 -show_entries stream=height %s",
-             input_video_file);
-#endif
-    CLEAR(output_str);
-    run_cmd_return_output(cmd, output_str, 1);
-    dbg(9, "Video:res=%s\n", output_str);
-
-    if (strlen(output_str) > 0)
-    {
-        hh = get_number_in_string_nonnull(output_str, hh);
-    }
-
-    dbg(9, "Video:width=%d height=%d\n", ww, hh);
-    CLEAR(output_str);
-#ifdef _IS_PLATFORM_WIN_
-    run_cmd_return_output(shell_cmd__get_video_fps_win, output_str, 1);
-#else
-    run_cmd_return_output(shell_cmd__get_video_fps, output_str, 1);
-#endif
-
-    if (strlen(output_str) > 0)
-    {
-        fps = atof(output_str);
-    }
-
-    dbg(9, "Video:fps=%f\n", fps);
-    //char input_video_ts_pipe[] = "./v_ts.pipe";
-    DEFAULT_FPS_SLEEP_MS = (int)(1000.0 / fps);
-    uint8_t *yy;
-    uint8_t *uu;
-    uint8_t *vv;
-    yy = calloc(1, (size_t)((ww * hh) * 1.5)); // 3110400.0 Bytes per 1080 frame
-    int frame_size_in_bytes = (ww * hh) * 1.5;
-    uu = yy + (ww * hh);
-    vv = uu + ((ww / 2) * (hh / 2));
-    // char *pts_buffer = calloc(1, 5000);
-    //unlink(input_video_ts_pipe);
-    //mkfifo(input_video_ts_pipe, 0666);
-    int read_bytes = 0;
-    CLEAR(cmd);
-#if 1
-
-#ifdef _IS_PLATFORM_WIN_
-    snprintf(cmd, sizeof(cmd),
-             "ffmpeg.exe -y -hide_banner -nostats -i %s -threads %d -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s pipe:1 < NUL",
-             input_video_file, cpu_cores, "yuv420p");
-#else
-    snprintf(cmd, sizeof(cmd),
-             "ffmpeg -y -hide_banner -nostats -i %s -threads %d -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s - </dev/null",
-             input_video_file, cpu_cores, "yuv420p");
-#endif
-#else
-    snprintf(cmd, sizeof(cmd),
-             "ffmpeg -y -hide_banner -nostats -i %s -threads %d -vf showinfo -an -sn -f image2pipe -vcodec rawvideo -pix_fmt %s - 2> %s",
-             input_video_file, cpu_cores, "yuv420p", input_video_ts_pipe);
-#endif
-    // Open an input pipe from ffmpeg
-    FILE *pipein = popen(cmd, "r");
-    //int input_video_ts_pipe_fd = open(input_video_ts_pipe, O_RDONLY | O_NONBLOCK);
-    int num_scan_values = 0;
-    long int pts = 0;
-    long long timspan_in_ms = 99999;
-    static struct timeval tm_outgoing_video_frames;
-    int new_sleep = DEFAULT_FPS_SLEEP_MS;
-    int last_sleep = DEFAULT_FPS_SLEEP_MS;
-    uint64_t current_video_frame = 0;
-    double current_video_pts_ms = 0;
-    uint64_t start_video_pts_ms = tc_current_time_monotonic();
-    uint64_t should_video_pts_ms = 0;
-
-    while (toxav_iterate_thread_stop != 1)
-    {
-        if (global_video_active == 1)
-        {
-            pthread_mutex_lock(&av_thread_lock);
-            // dbg(9, "AV Thread #%d:get frame\n", (int) id);
-            // capturing is enabled, capture frames
-            int r = 1;
-
-            if (r == 1)
-            {
-                if (global_send_first_frame > 0)
-                {
-                    global_send_first_frame--;
-                }
-
-                if ((friend_to_send_video_to != -1) && (first_audio_frame_sent == 1))
-                {
-                    read_bytes = fread(yy, 1, frame_size_in_bytes, pipein);
-
-                    // read(input_video_ts_pipe_fd, pts_buffer, 1000);
-                    // dbg(9, "VIDEO:RD:005:%s\n++++\n", pts_buffer);
-
-                    if (read_bytes == 0)
-                    {
-                        dbg(9, "VIDEO:CL:001 pipein=%p\n", pipein);
-                        fflush(pipein);
-                        int res_ = pclose(pipein);
-                        dbg(9, "VIDEO:CL:002 res_=%d errno=%d\n", res_, (int)errno);
-                        // close(input_video_ts_pipe_fd);
-                        // unlink(input_video_ts_pipe);
-                        // mkfifo(input_video_ts_pipe, 0666);
-                        // CLEAR(pts_buffer);
-                        pipein = popen(cmd, "r");
-                        dbg(9, "VIDEO:CL:003 pipein=%p\n", pipein);
-                        // input_video_ts_pipe_fd = open(input_video_ts_pipe, O_RDONLY | O_NONBLOCK);
-                        read_bytes = fread(yy, 1, frame_size_in_bytes, pipein);
-                        dbg(9, "VIDEO:CL:004\n");
-                        current_video_frame = 0;
-                    }
-
-                    // dbg(9, "AV Thread #%d:send frame to friend num=%d\n", (int) id, (int)friend_to_send_video_to);
-                    TOXAV_ERR_SEND_FRAME error = 0;
-                    toxav_video_send_frame(av, friend_to_send_video_to, ww, hh,
-                                           yy, uu, vv, &error);
-
-                    if (current_video_frame == 0)
-                    {
-                        start_video_pts_ms = tc_current_time_monotonic();
-                    }
-
-                    should_video_pts_ms = tc_current_time_monotonic() - start_video_pts_ms;
-                    current_video_pts_ms = (((double)current_video_frame / fps) * (double)1000.0);
-                    current_video_frame++;
-
-                    // dbg(9, "V:pos ms=%lld\n", (long long)current_video_pts_ms);
-
-                    // HINT: now synchronize to auto PTS
-                    if (abs(current_video_pts_ms - current_audio_pts_ms) > 10)
-                    {
-                        DEFAULT_FPS_SLEEP_MS = DEFAULT_FPS_SLEEP_MS
-                                               + (current_video_pts_ms - current_audio_pts_ms);
-
-                        if (DEFAULT_FPS_SLEEP_MS < 3)
-                        {
-                            DEFAULT_FPS_SLEEP_MS = 3;
-                        }
-                    }
-
-                    // dbg(9, "V:pos DEFAULT_FPS_SLEEP_MS=%d\n", (int)DEFAULT_FPS_SLEEP_MS);
-
-                    // dbg(9, "Video: is=%lld should=%lld\n",
-                    //    (long long)current_video_pts_ms,
-                    //    (long long)should_video_pts_ms);
-
-                    if (error)
-                    {
-                        if (error == TOXAV_ERR_SEND_FRAME_SYNC)
-                        {
-                            //debug_notice("uToxVideo:\tVid Frame sync error: w=%u h=%u\n", av_video_frame.w,
-                            //           av_video_frame.h);
-                            dbg(0, "TOXAV_ERR_SEND_FRAME_SYNC\n");
-                        }
-                        else if (error == TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED)
-                        {
-                            //debug_error("uToxVideo:\tToxAV disagrees with our AV state for friend %lu, self %u, friend %u\n",
-                            //  i, friend[i].call_state_self, friend[i].call_state_friend);
-                            dbg(0, "TOXAV_ERR_SEND_FRAME_PAYLOAD_TYPE_DISABLED\n");
-                        }
-                        else
-                        {
-                            //debug_error("uToxVideo:\ttoxav_send_video error friend: %i error: %u\n",
-                            //          friend[i].number, error);
-                            dbg(0, "ToxVideo:toxav_send_video error %u\n", error);
-                            // *TODO* if these keep piling up --> just disconnect the call!!
-                            // *TODO* if these keep piling up --> just disconnect the call!!
-                            // *TODO* if these keep piling up --> just disconnect the call!!
-                        }
-                    }
-                }
-                else
-                {
-                    yieldcpu(5);
-                }
-            }
-            else if (r == -1)
-            {
-                // debug_error("uToxVideo:\tErr... something really bad happened trying to get this frame, I'm just going "
-                //            "to plots now!\n");
-                //video_device_stop();
-                //close_video_device(video_device);
-                dbg(0, "ToxVideo:something really bad happened trying to get this frame\n");
-            }
-
-            pthread_mutex_unlock(&av_thread_lock);
-
-            if (timspan_in_ms != 99999)
-            {
-                timspan_in_ms = __utimer_stop(&tm_outgoing_video_frames, "_", 1);
-
-                if (timspan_in_ms > DEFAULT_FPS_SLEEP_MS)
-                {
-                    // dbg(9, "(1)def=%d actual=%d\n", DEFAULT_FPS_SLEEP_MS, timspan_in_ms);
-                    if (last_sleep > 2)
-                    {
-                        new_sleep = last_sleep - (timspan_in_ms - DEFAULT_FPS_SLEEP_MS);
-
-                        if (new_sleep < 2)
-                        {
-                            new_sleep = 2;
-                        }
-                    }
-                    else
-                    {
-                        new_sleep = 2;
-                    }
-                }
-                else
-                {
-                    new_sleep = last_sleep + (DEFAULT_FPS_SLEEP_MS - timspan_in_ms);
-                    //dbg(9, "(2)new=%d last=%d def=%d actual=%d\n",
-                    //    new_sleep, last_sleep, DEFAULT_FPS_SLEEP_MS, timspan_in_ms);
-                }
-            }
-            else
-            {
-                timspan_in_ms = __utimer_stop(&tm_outgoing_video_frames, "_", 1);
-                new_sleep = DEFAULT_FPS_SLEEP_MS;
-            }
-
-            // HINT: safety check --------
-            if (new_sleep > 500)
-            {
-                new_sleep = 500; // just use 24fps
-                // dbg(9, "V:sleep=%d ms\n", (int)(1000 / 24));
-            }
-
-            __utimer_start(&tm_outgoing_video_frames);
-            yieldcpu(new_sleep - 1);
-            last_sleep = new_sleep;
-        }
-        else
-        {
-            yieldcpu(100);
-        }
-    }
-
-    free(yy);
-    fflush(pipein);
-    pclose(pipein);
-    // close(input_video_ts_pipe_fd);
-    // unlink(input_video_ts_pipe);
-
-    if (video_call_enabled == 1)
-    {
-        // end streaming
-        v4l_endread();
-    }
-
     dbg(2, "ToxVideo:Clean thread exit!\n");
     return NULL;
 }
@@ -3794,116 +3491,6 @@ void *thread_audio_send_av(void *data)
     uint64_t current_audio_frame = 0;
     current_audio_pts_ms = 0;
 
-    while (toxav_audio_thread_stop != 1)
-    {
-        if (global_video_active == 1)
-        {
-            if (friend_to_send_video_to != -1)
-            {
-                if (bw_rb_size(pcm_rb) > 2)
-                {
-                    bw_rb_read(pcm_rb, &pcm_buffer, &w, &h);
-
-                    if (pcm_buffer)
-                    {
-                        if (first_audio_frame_sent == 0)
-                        {
-                            first_audio_frame_sent = 1;
-                            dbg(9, "Audio: sending first frame\n");
-                        }
-
-                        TOXAV_ERR_SEND_FRAME error;
-                        bool res = toxav_audio_send_frame(av,
-                                                          friend_to_send_video_to,
-                                                          pcm_buffer,
-                                                          (size_t)gen_sample_count,
-                                                          (uint8_t)gen_channels,
-                                                          (uint32_t)gen_sampling_rate, &error);
-                        free(pcm_buffer);
-
-                        if (w == 1)
-                        {
-                            current_audio_pts_ms = 0;
-                        }
-
-                        current_audio_frame = current_audio_frame++;
-                        current_audio_pts_ms = current_audio_pts_ms + gen_audio_length_in_ms;
-                        // dbg(9, "A:pos ms=%lld\n", (long long)current_audio_pts_ms);
-
-                        // ------- sleep delay autotune -------
-                        if (timspan_in_ms != 99999)
-                        {
-                            timspan_in_ms = __utimer_stop(&tm_outgoing_audio_frames, "_", 1);
-
-                            if (timspan_in_ms > DEFAULT_AUDIO_SLEEP_MS_2)
-                            {
-                                if (last_sleep > 2)
-                                {
-                                    new_sleep = last_sleep - (timspan_in_ms - DEFAULT_AUDIO_SLEEP_MS_2);
-
-                                    if (new_sleep < 2)
-                                    {
-                                        new_sleep = 2;
-                                    }
-                                }
-                                else
-                                {
-                                    new_sleep = 2;
-                                }
-                            }
-                            else
-                            {
-                                new_sleep = last_sleep + (DEFAULT_AUDIO_SLEEP_MS_2 - timspan_in_ms);
-                            }
-                        }
-                        else
-                        {
-                            timspan_in_ms = __utimer_stop(&tm_outgoing_audio_frames, "_", 1);
-                            new_sleep = DEFAULT_AUDIO_SLEEP_MS_2;
-                        }
-
-                        // HINT: safety check -------------
-                        if (abs(new_sleep - DEFAULT_AUDIO_SLEEP_MS_2) > 5)
-                        {
-                            new_sleep = DEFAULT_AUDIO_SLEEP_MS_2;
-                        }
-
-                        // HINT: safety check -------------
-                        __utimer_start(&tm_outgoing_audio_frames);
-                        usleep((new_sleep * 1000) - 1);
-                        // dbg(9, "Audio: sleep=%d\n", new_sleep);
-                        last_sleep = new_sleep;
-                        // ------- sleep delay autotune -------
-                    }
-                }
-                else
-                {
-                    yieldcpu(5);
-                }
-            }
-            else
-            {
-                if (first_audio_frame_sent == 1)
-                {
-                    first_audio_frame_sent = 0;
-                    dbg(9, "Audio: reset first-frame flag (2)\n");
-                }
-
-                yieldcpu(5);
-            }
-        }
-        else
-        {
-            if (first_audio_frame_sent == 1)
-            {
-                first_audio_frame_sent = 0;
-                dbg(9, "Audio: reset first-frame flag (2)\n");
-            }
-
-            yieldcpu(100);
-        }
-    }
-
     dbg(2, "ToxAudio:Clean audio thread exit!\n");
     return NULL;
 }
@@ -3914,8 +3501,6 @@ void *thread_audio_av(void *data)
     ToxAV *av = (ToxAV *) data;
     pthread_t id = pthread_self();
     int gen_freq_hz = 440; // in Hz
-    gen_sampling_rate = 48000;
-    gen_channels = 1;
     gen_sample_count = ((gen_sampling_rate) * (gen_audio_length_in_ms) / 1000);
     int pcm_buffer_size = gen_sample_count * gen_channels * 2;
     int gen_sine_multi = 1;
@@ -3973,73 +3558,64 @@ void *thread_audio_av(void *data)
 
     while (toxav_audio_thread_stop != 1)
     {
-        // if (global_video_active == 1)
-        //{
-            // if (friend_to_send_video_to != -1)
-            //{
-                // dbg(9, "Audio:CLA:001\n");
-                int16_t *gen_pcm_buffer = calloc(1, pcm_buffer_size);
-                // dbg(9, "Audio:CLA:002 buf=%p piep=%p\n", gen_pcm_buffer, pipein);
-                read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
+        // dbg(9, "Audio:CLA:001\n");
+        int16_t *gen_pcm_buffer = calloc(1, pcm_buffer_size);
+        // dbg(9, "Audio:CLA:002 buf=%p piep=%p\n", gen_pcm_buffer, pipein);
+        read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
 
-                // dbg(9, "Audio:CLA:003\n");
-                // read(input_audio_ts_pipe_fd, pts_buffer, 1000);
-                // num_scan_values = sscanf(pts_buffer, "pos:%ld", &pts);
-                // dbg(9, "Audio:PTS=%s\n", pts_buffer);
+        // dbg(9, "Audio:CLA:003\n");
+        // read(input_audio_ts_pipe_fd, pts_buffer, 1000);
+        // num_scan_values = sscanf(pts_buffer, "pos:%ld", &pts);
+        // dbg(9, "Audio:PTS=%s\n", pts_buffer);
 
-                if (read_bytes == 0)
-                {
-                    dbg(9, "Audio:CL:001 pipein=%p\n", pipein);
-                    dbg(9, "Audio:CL:001a read_bytes=%d\n", read_bytes);
-                    fflush(pipein);
-                    int res_ = pclose(pipein);
-                    dbg(9, "Audio:CL:002 res_=%d errno=%d\n", res_, (int)errno);
-                    // close(input_audio_ts_pipe_fd);
-                    // unlink(input_audio_ts_pipe);
-                    // mkfifo(input_audio_ts_pipe, 0666);
-                    dbg(9, "Audio:CL:003\n");
-                    pipein = popen(cmd, "r");
-                    dbg(9, "Audio:CL:004 pipein=%p\n", pipein);
-                    // input_audio_ts_pipe_fd = open(input_audio_ts_pipe, O_RDONLY | O_NONBLOCK);
-                    read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
-                    dbg(9, "Audio:CL:005 read_bytes=%d\n", read_bytes);
+        if (read_bytes == 0)
+        {
+            dbg(9, "Audio:CL:001 pipein=%p\n", pipein);
+            dbg(9, "Audio:CL:001a read_bytes=%d\n", read_bytes);
+            fflush(pipein);
+            int res_ = pclose(pipein);
+            dbg(9, "Audio:CL:002 res_=%d errno=%d\n", res_, (int)errno);
+            // close(input_audio_ts_pipe_fd);
+            // unlink(input_audio_ts_pipe);
+            // mkfifo(input_audio_ts_pipe, 0666);
+            dbg(9, "Audio:CL:003\n");
+            pipein = popen(cmd, "r");
+            dbg(9, "Audio:CL:004 pipein=%p\n", pipein);
+            // input_audio_ts_pipe_fd = open(input_audio_ts_pipe, O_RDONLY | O_NONBLOCK);
+            read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
+            dbg(9, "Audio:CL:005 read_bytes=%d\n", read_bytes);
 
-                    while (bw_rb_full(pcm_rb))
-                    {
-                        yieldcpu(1);
-                    }
+            while (bw_rb_full(pcm_rb))
+            {
+                yieldcpu(1);
+            }
 
-                    void *p = bw_rb_write(pcm_rb, gen_pcm_buffer, 1, 0);
+            void *p = bw_rb_write(pcm_rb, gen_pcm_buffer, 1, 0);
 
-                    if (p)
-                    {
-                        dbg(9, "Audio:CL:0101 bw_rb_write:ERROR:1\n");
-                        free(p);
-                    }
-                }
-                else
-                {
-                    while (bw_rb_full(pcm_rb))
-                    {
-                        yieldcpu(1);
-                    }
+            if (p)
+            {
+                dbg(9, "Audio:CL:0101 bw_rb_write:ERROR:1\n");
+                free(p);
+            }
+        }
+        else
+        {
+            while (bw_rb_full(pcm_rb))
+            {
+                yieldcpu(1);
+            }
 
-                    void *p = bw_rb_write(pcm_rb, gen_pcm_buffer, 0, 0);
+            void *p = bw_rb_write(pcm_rb, gen_pcm_buffer, 0, 0);
 
-                    if (p)
-                    {
-                        dbg(9, "Audio:CL:0101 bw_rb_write:ERROR:2\n");
-                        free(p);
-                    }
-                }
-            //}
+            if (p)
+            {
+                dbg(9, "Audio:CL:0101 bw_rb_write:ERROR:2\n");
+                free(p);
+            }
+        }
 
-            yieldcpu(DEFAULT_AUDIO_SLEEP_MS / 2);
-        //}
-        //else
-        //{
-        //    yieldcpu(100);
-        //}
+        //*****// yieldcpu(DEFAULT_AUDIO_SLEEP_MS / 2);
+        yieldcpu(1);
     }
 
     fflush(pipein);
@@ -4063,19 +3639,7 @@ void *thread_video_av(void *data)
 {
     ToxAV *av = (ToxAV *) data;
     pthread_t id = pthread_self();
-    pthread_mutex_t av_thread_lock;
-
-    if (pthread_mutex_init(&av_thread_lock, NULL) != 0)
-    {
-        dbg(0, "Error creating video av_thread_lock\n");
-    }
-    else
-    {
-        dbg(2, "av_thread_lock video created successfully\n");
-    }
-
     dbg(2, "AV video Thread #%d: starting\n", (int) id);
-
     dbg(2, "ToxVideo:Clean video thread exit!\n");
     return NULL;
 }
@@ -4607,43 +4171,54 @@ void send_audio_to_all_audio_groups(Tox *tox)
     uint32_t h;
     int16_t *pcm_buffer = NULL;
 
-    if (bw_rb_size(pcm_rb) > 2)
+    int kk = 0;
+    for (kk=0;kk<2;kk++)
     {
-        bool res1 = bw_rb_read(pcm_rb, &pcm_buffer, &w, &h);
-
-        if (pcm_buffer)
+        if (bw_rb_size(pcm_rb) > 100)
         {
-            size_t num_confs = tox_conference_get_chatlist_size(tox);
-            if (num_confs > 0)
+            bool res1 = bw_rb_read(pcm_rb, &pcm_buffer, &w, &h);
+
+            if (pcm_buffer)
             {
-                size_t memsize = (num_confs * sizeof(uint32_t));
-                uint32_t *conferences_list = calloc(1, memsize);
-                if (conferences_list)
+                size_t num_confs = tox_conference_get_chatlist_size(tox);
+                if (num_confs > 0)
                 {
-                    tox_conference_get_chatlist(tox, conferences_list);
+                    size_t memsize = (num_confs * sizeof(uint32_t));
+                    uint32_t *conferences_list = calloc(1, memsize);
+                    if (conferences_list)
+                    {
+                        tox_conference_get_chatlist(tox, conferences_list);
 
-                    int res;
-                    uint32_t  i;
-                    for(i=0;i<num_confs;i++)
-                    {                
-                        //dbg(9, "send_audio_to_all_audio_groups:007:conferences_list[i]=%d\n", (int)conferences_list[i]);
-                        res = toxav_group_send_audio(tox, (uint32_t)conferences_list[i], pcm_buffer, (size_t)gen_sample_count,
-                                                    (uint8_t)gen_channels, (uint32_t)gen_sampling_rate);
-                        //dbg(9, "send_audio_to_all_audio_groups:007a:%d,%d,%d\n", (uint32_t)gen_sample_count, (uint32_t)gen_channels, (uint32_t)gen_sampling_rate);
-                        //dbg(9, "send_audio_to_all_audio_groups:008:res=%d\n", res);
-                        //dbg(9, "send_audio_to_all_audio_groups:008:pcm:%d %d %d %d\n",
-                        //    (int)pcm_buffer[0],
-                        //    (int)pcm_buffer[1],
-                        //    (int)pcm_buffer[2],
-                        //    (int)pcm_buffer[3]);
+                        int res;
+                        uint32_t  i;
+                        for(i=0;i<num_confs;i++)
+                        {                
+                            // dbg(9, "send_audio_to_all_audio_groups:007:conferences_list[i]=%d\n", (int)conferences_list[i]);
+                            res = toxav_group_send_audio(tox, (uint32_t)conferences_list[i], pcm_buffer, (size_t)gen_sample_count,
+                                                        (uint8_t)gen_channels, (uint32_t)gen_sampling_rate);
+                                                        
+                            if (res != 0)
+                            {
+                                usleep(1000 * 1); // sleep 1 ms
+                                res = toxav_group_send_audio(tox, (uint32_t)conferences_list[i], pcm_buffer, (size_t)gen_sample_count,
+                                                            (uint8_t)gen_channels, (uint32_t)gen_sampling_rate);
+                            }
+                            // dbg(9, "send_audio_to_all_audio_groups:007a:%d,%d,%d\n", (uint32_t)gen_sample_count, (uint32_t)gen_channels, (uint32_t)gen_sampling_rate);
+                            // dbg(9, "send_audio_to_all_audio_groups:008:res=%d\n", res);
+                            //dbg(9, "send_audio_to_all_audio_groups:008:pcm:%d %d %d %d\n",
+                            //    (int)pcm_buffer[0],
+                            //    (int)pcm_buffer[1],
+                            //    (int)pcm_buffer[2],
+                            //    (int)pcm_buffer[3]);
+                        }
+
+                        free(conferences_list);
                     }
-
-                    free(conferences_list);
                 }
-            }
 
-            free(pcm_buffer);
-            pcm_buffer = NULL;
+                free(pcm_buffer);
+                pcm_buffer = NULL;
+            }
         }
     }
 }
@@ -4698,11 +4273,15 @@ int main(int argc, char *argv[])
     v4l2_device = malloc(400);
     memset(v4l2_device, 0, 400);
     snprintf(v4l2_device, 399, "%s", "/dev/video0");
-    int aflag = 0;
+
+    gen_sampling_rate = 48000;
+    gen_channels = 1;
+    gen_audio_length_in_ms = 40; // XY ms PCM pieces
+
     char *cvalue = NULL;
     int index;
     int opt;
-    const char     *short_opt = "hvd:tT23b:f";
+    const char     *short_opt = "hvd:tT23b:fs:c:a:";
     struct option   long_opt[] =
     {
         {"help",          no_argument,       NULL, 'h'},
@@ -4717,10 +4296,6 @@ int main(int argc, char *argv[])
         {
             case -1:       /* no more arguments */
             case 0:        /* long options toggles */
-                break;
-
-            case 'a':
-                aflag = 1;
                 break;
 
             case '2':
@@ -4753,6 +4328,48 @@ int main(int argc, char *argv[])
                 DEFAULT_GLOBAL_VID_BITRATE = (uint32_t)atoi(optarg);
                 dbg(3, "Using Videobitrate: %d\n", (int)DEFAULT_GLOBAL_VID_BITRATE);
                 global_video_bit_rate = DEFAULT_GLOBAL_VID_BITRATE;
+                break;
+
+            case 's':
+                gen_sampling_rate = (uint32_t)atoi(optarg);
+                if ((gen_sampling_rate != 48000) && (gen_sampling_rate != 16000) && (gen_sampling_rate != 8000))
+                {
+                    gen_sampling_rate = 48000;
+                }
+                else
+                {
+                    dbg(3, "Using gen_sampling_rate: %d\n", (int)gen_sampling_rate);
+                }
+                break;
+
+            case 'a':
+                gen_audio_length_in_ms = (uint32_t)atoi(optarg);
+                if (
+                        (gen_audio_length_in_ms != 20) &&
+                        (gen_audio_length_in_ms != 30) &&
+                        (gen_audio_length_in_ms != 40) &&
+                        (gen_audio_length_in_ms != 50) &&
+                        (gen_audio_length_in_ms != 60)
+                    )
+                {
+                    gen_audio_length_in_ms = 40;
+                }
+                else
+                {
+                    dbg(3, "Using gen_audio_length_in_ms: %d\n", (int)gen_audio_length_in_ms);
+                }
+                break;
+
+            case 'c':
+                gen_channels = (uint32_t)atoi(optarg);
+                if ((gen_channels < 0) || (gen_channels > 2))
+                {
+                    gen_channels = 1;
+                }
+                else
+                {
+                    dbg(3, "Using gen_channels: %d\n", (int)gen_channels);
+                }
                 break;
 
             case 'v':
@@ -4935,7 +4552,7 @@ int main(int argc, char *argv[])
         dbg(2, "AV video Thread successfully created\n");
     }
 
-    pcm_rb = bw_rb_new(50);
+    pcm_rb = bw_rb_new(500);
     toxav_audio_thread_stop = 0;
 
     if (pthread_create(&(tid[2]), NULL, thread_audio_av, (void *)mytox_av) != 0)
@@ -4996,11 +4613,16 @@ int main(int argc, char *argv[])
 
     while (tox_loop_running)
     {
+        if ((last_sent_audio + (gen_audio_length_in_ms - tolerance)) <= tc_current_time_monotonic())
+        {
+            send_audio_to_all_audio_groups(tox);
+            last_sent_audio = tc_current_time_monotonic();
+        }
         tox_iterate(tox, NULL);
         if ((last_sent_audio + (gen_audio_length_in_ms - tolerance)) <= tc_current_time_monotonic())
         {
             send_audio_to_all_audio_groups(tox);
-            last_sent_audio = (tc_current_time_monotonic() + tolerance);
+            last_sent_audio = tc_current_time_monotonic();
         }
         usleep(2 * 1000);
 
