@@ -340,6 +340,8 @@ const char *my_avatar_filename = "avatar.png";
 char *v4l2_device; // video device filename
 int cpu_cores = 1;
 
+char *stream_input_filename; // optional input filename
+
 const char *shell_cmd__single_shot = "./scripts/single_shot.sh 2> /dev/null";
 const char *shell_cmd__get_cpu_temp = "./scripts/get_cpu_temp.sh 2> /dev/null";
 const char *shell_cmd__get_gpu_temp = "./scripts/get_gpu_temp.sh 2> /dev/null";
@@ -1023,7 +1025,7 @@ void bootstap_nodes(Tox *tox, DHT_node nodes[], int number_of_nodes, int add_as_
         {
             if (error == TOX_ERR_BOOTSTRAP_OK)
             {
-                // dbg(9, "bootstrap:%s %d [FALSE]res=TOX_ERR_BOOTSTRAP_OK\n", nodes[i].ip, nodes[i].port);
+                dbg(9, "bootstrap:%s %d [FALSE]res=TOX_ERR_BOOTSTRAP_OK\n", nodes[i].ip, nodes[i].port);
             }
             else if (error == TOX_ERR_BOOTSTRAP_NULL)
             {
@@ -1040,10 +1042,10 @@ void bootstap_nodes(Tox *tox, DHT_node nodes[], int number_of_nodes, int add_as_
         }
         else
         {
-            // dbg(9, "bootstrap:%s %d [TRUE]res=%d\n", nodes[i].ip, nodes[i].port, res);
+            dbg(9, "bootstrap:%s %d [TRUE]res=%d\n", nodes[i].ip, nodes[i].port, res);
         }
 
-        if ((add_as_tcp_relay == 1) && (switch_tcponly == 1))
+        if ((add_as_tcp_relay == 1) || (switch_tcponly == 1))
         {
             res = tox_add_tcp_relay(tox, nodes[i].ip, nodes[i].port, nodes[i].key_bin, &error); // use also as TCP relay
 
@@ -1051,7 +1053,7 @@ void bootstap_nodes(Tox *tox, DHT_node nodes[], int number_of_nodes, int add_as_
             {
                 if (error == TOX_ERR_BOOTSTRAP_OK)
                 {
-                    // dbg(9, "add_tcp_relay:%s %d [FALSE]res=TOX_ERR_BOOTSTRAP_OK\n", nodes[i].ip, nodes[i].port);
+                    dbg(9, "add_tcp_relay:%s %d [FALSE]res=TOX_ERR_BOOTSTRAP_OK\n", nodes[i].ip, nodes[i].port);
                 }
                 else if (error == TOX_ERR_BOOTSTRAP_NULL)
                 {
@@ -1068,7 +1070,7 @@ void bootstap_nodes(Tox *tox, DHT_node nodes[], int number_of_nodes, int add_as_
             }
             else
             {
-                // dbg(9, "add_tcp_relay:%s %d [TRUE]res=%d\n", nodes[i].ip, nodes[i].port, res);
+                dbg(9, "add_tcp_relay:%s %d [TRUE]res=%d\n", nodes[i].ip, nodes[i].port, res);
             }
         }
         else
@@ -1085,15 +1087,16 @@ void bootstrap(Tox *tox)
     DHT_node nodes1[] =
     {
         {"178.62.250.138",             33445, "788236D34978D1D5BD822F0A5BEBD2C53C64CC31CD3149350EE27D4D9A2F9B6B", {0}},
-        {"51.15.37.145",             33445, "6FC41E2BD381D37E9748FC0E0328CE086AF9598BECC8FEB7DDF2E440475F300E", {0}},
+        {"172.103.164.206",            33445, "10C00EB250C3233E343E2AEBA07115A5C28920E9C8D29492F6D00B29049EDC7E", {0}},
+        {"51.15.37.145",               33445, "6FC41E2BD381D37E9748FC0E0328CE086AF9598BECC8FEB7DDF2E440475F300E", {0}},
         {"130.133.110.14",             33445, "461FA3776EF0FA655F1A05477DF1B3B614F7D6B124F7DB1DD4FE3C08B03B640F", {0}},
-        {"23.226.230.47",         33445, "A09162D68618E742FFBCA1C2C70385E6679604B2D80EA6E84AD0996A1AC8A074", {0}},
+        {"23.226.230.47",              33445, "A09162D68618E742FFBCA1C2C70385E6679604B2D80EA6E84AD0996A1AC8A074", {0}},
         {"163.172.136.118",            33445, "2C289F9F37C20D09DA83565588BF496FAB3764853FA38141817A72E3F18ACA0B", {0}},
-        {"217.182.143.254",             443, "7AED21F94D82B05774F697B209628CD5A9AD17E0C073D9329076A4C28ED28147", {0}},
-        {"185.14.30.213",               443,  "2555763C8C460495B14157D234DD56B86300A2395554BCAE4621AC345B8C1B1B", {0}},
-        {"136.243.141.187",             443,  "6EE1FADE9F55CC7938234CC07C864081FC606D8FE7B751EDA217F268F1078A39", {0}},
+        {"217.182.143.254",              443, "7AED21F94D82B05774F697B209628CD5A9AD17E0C073D9329076A4C28ED28147", {0}},
+        {"185.14.30.213",                443,  "2555763C8C460495B14157D234DD56B86300A2395554BCAE4621AC345B8C1B1B", {0}},
+        {"136.243.141.187",              443,  "6EE1FADE9F55CC7938234CC07C864081FC606D8FE7B751EDA217F268F1078A39", {0}},
         {"128.199.199.197",            33445, "B05C8869DBB4EDDD308F43C1A974A20A725A36EACCA123862FDE9945BF9D3E09", {0}},
-        {"198.46.138.44",               33445, "F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67", {0}}
+        {"198.46.138.44",              33445, "F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67", {0}}
     };
     // more nodes here, but maybe some issues
     DHT_node nodes2[] =
@@ -3519,7 +3522,15 @@ void *thread_audio_av(void *data)
     int send_beep = 0;
     // char input_audio_ts_pipe[] = "./a_ts.pipe";
     // ----------------- TUNE HERE -----------------
-    char input_video_file[] = "./video.vid";
+    char *input_video_file = "./video.vid";
+    
+    if (stream_input_filename)
+    {
+        input_video_file = stream_input_filename;
+    }
+
+    dbg(9, "ToxAudio:input file: %s\n", input_video_file);
+    
     int _tune_audio_frames_plus = 0;
     int tweak_delay_in_ms = 8;
     // ----------------- TUNE HERE -----------------
@@ -4192,11 +4203,11 @@ void send_audio_to_all_audio_groups(Tox *tox)
                         int res;
                         uint32_t  i;
                         for(i=0;i<num_confs;i++)
-                        {                
+                        {
                             // dbg(9, "send_audio_to_all_audio_groups:007:conferences_list[i]=%d\n", (int)conferences_list[i]);
                             res = toxav_group_send_audio(tox, (uint32_t)conferences_list[i], pcm_buffer, (size_t)gen_sample_count,
                                                         (uint8_t)gen_channels, (uint32_t)gen_sampling_rate);
-                                                        
+
                             if (res != 0)
                             {
                                 usleep(1000 * 1); // sleep 1 ms
@@ -4205,7 +4216,7 @@ void send_audio_to_all_audio_groups(Tox *tox)
                             }
                             // dbg(9, "send_audio_to_all_audio_groups:007a:%d,%d,%d\n", (uint32_t)gen_sample_count, (uint32_t)gen_channels, (uint32_t)gen_sampling_rate);
                             // dbg(9, "send_audio_to_all_audio_groups:008:res=%d\n", res);
-                            //dbg(9, "send_audio_to_all_audio_groups:008:pcm:%d %d %d %d\n",
+                            // dbg(9, "send_audio_to_all_audio_groups:008:pcm:%d %d %d %d\n",
                             //    (int)pcm_buffer[0],
                             //    (int)pcm_buffer[1],
                             //    (int)pcm_buffer[2],
@@ -4281,7 +4292,7 @@ int main(int argc, char *argv[])
     char *cvalue = NULL;
     int index;
     int opt;
-    const char     *short_opt = "hvd:tT23b:fs:c:a:";
+    const char     *short_opt = "hvd:tT23b:fs:c:a:i:";
     struct option   long_opt[] =
     {
         {"help",          no_argument,       NULL, 'h'},
@@ -4322,6 +4333,12 @@ int main(int argc, char *argv[])
                 snprintf(v4l2_device, 399, "%s", optarg);
                 // printf("Using Videodevice: %s\n", v4l2_device);
                 dbg(3, "Using Videodevice: %s\n", v4l2_device);
+                break;
+
+            case 'i':
+                stream_input_filename = calloc(1, 400);
+                snprintf(stream_input_filename, 399, "%s", optarg);
+                dbg(3, "Using as input: %s\n", stream_input_filename);
                 break;
 
             case 'b':
