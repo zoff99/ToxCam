@@ -131,8 +131,8 @@ static struct v4lconvert_data *v4lconvert_data;
 // ----------- version -----------
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 99
-#define VERSION_PATCH 15
-static const char global_version_string[] = "0.99.15";
+#define VERSION_PATCH 17
+static const char global_version_string[] = "0.99.17";
 // ----------- version -----------
 // ----------- version -----------
 
@@ -170,6 +170,8 @@ uint32_t DEFAULT_GLOBAL_VID_BITRATE = 800; // kbit/sec
 int DEFAULT_FPS_SLEEP_MS = 50; // 250=4fps, 500=2fps, 160=6fps  // default video fps (sleep in msecs.)
 #define PROXY_PORT_TOR_DEFAULT 9050
 #define RECONNECT_AFTER_OFFLINE_SECONDS 90 // 90s offline and we try to reconnect
+
+#define BUFFER_INPUT_STREAM_MS 4000 // 4 seconds input stream buffering
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 #define c_sleep(x) usleep(1000*x)
@@ -330,6 +332,7 @@ void black_yuf_frame_xy();
 void rbg_to_yuv(uint8_t r, uint8_t g, uint8_t b, uint8_t *y, uint8_t *u, uint8_t *v);
 void set_color_in_yuv_frame_xy(uint8_t *yy, uint8_t *uu, uint8_t *vv, int px_x, int px_y, int frame_w, int frame_h,
                                uint8_t r, uint8_t g, uint8_t b);
+void set_group_title_custom(Tox *tox);
 
 
 const char *savedata_filename = "savedata.tox";
@@ -343,6 +346,7 @@ int cpu_cores = 1;
 char *stream_input_filename; // optional input filename
 
 const char *shell_cmd__single_shot = "./scripts/single_shot.sh 2> /dev/null";
+const char *shell_cmd__get_song_title = "./scripts/get_song_title.sh 2> /dev/null";
 const char *shell_cmd__get_cpu_temp = "./scripts/get_cpu_temp.sh 2> /dev/null";
 const char *shell_cmd__get_gpu_temp = "./scripts/get_gpu_temp.sh 2> /dev/null";
 const char *shell_cmd__get_my_number_of_open_files = "cat /proc/sys/fs/file-nr 2> /dev/null";
@@ -398,6 +402,8 @@ int global_blink_state = 0;
 int toxav_video_thread_stop = 0;
 int toxav_iterate_thread_stop = 0;
 int toxav_audio_thread_stop = 0;
+int toxav_audio_send_thread_stop = 0;
+int toxav_audio_songtitle_thread_stop = 0;
 
 // -- hardcoded --
 // -- hardcoded --
@@ -3482,7 +3488,7 @@ void *thread_av(void *data)
 
 void *thread_audio_send_av(void *data)
 {
-    ToxAV *av = (ToxAV *) data;
+    Tox *tox = (Tox *) data;
     uint32_t w;
     uint32_t h;
     int16_t *pcm_buffer = NULL;
@@ -3494,10 +3500,71 @@ void *thread_audio_send_av(void *data)
     uint64_t current_audio_frame = 0;
     current_audio_pts_ms = 0;
 
-    dbg(2, "ToxAudio:Clean audio thread exit!\n");
+    uint64_t last_sent_audio = tc_current_time_monotonic();
+    uint64_t tolerance = 0;
+    int delta_sleep = 0;
+    int start_streaming = 0;
+
+    while (toxav_audio_send_thread_stop != 1)
+    {
+        if (pcm_rb)
+        {
+            // dbg(9, "2:delta_sleep=%d tolerance=%d\n", (int)delta_sleep, (int)tolerance);
+            
+            if ((start_streaming == 0) && (bw_rb_size(pcm_rb) >= (BUFFER_INPUT_STREAM_MS / gen_audio_length_in_ms)))
+            {
+                start_streaming = 1;
+            }
+            if (start_streaming == 1)
+            {
+                if (tox)
+                {
+                    // dbg(9, "bw_rb_size1:stream=%d delta=%d\n", (int)bw_rb_size(pcm_rb), (int)(tc_current_time_monotonic() - last_sent_audio));
+                    last_sent_audio = tc_current_time_monotonic();
+                    // dbg(9, "3:delta_sleep=%d last_sent_audio=%lu\n", (int)delta_sleep, last_sent_audio);
+                    send_audio_to_all_audio_groups(tox);
+                    delta_sleep = (int)(tc_current_time_monotonic() - last_sent_audio);
+                }
+            }
+            else
+            {
+                // dbg(9, "bw_rb_size2=%d\n", (int)bw_rb_size(pcm_rb));
+            }
+        }
+
+        int must_sleep = (int)gen_audio_length_in_ms - (int)delta_sleep;
+        if (must_sleep < 0)
+        {
+            must_sleep = 0;
+        }
+        else if (must_sleep > (int)gen_audio_length_in_ms + (int)20)
+        {
+            must_sleep = (int)gen_audio_length_in_ms;
+        }
+        // dbg(9, "must_sleep=%d\n", (int)must_sleep);
+        yieldcpu((uint32_t)must_sleep);
+    }
+
+
+    dbg(2, "ToxAudio:Clean audio send thread exit!\n");
     return NULL;
 }
 
+
+void *thread_set_song_title(void *data)
+{
+    Tox *tox = (Tox *) data;
+    
+    while (toxav_audio_songtitle_thread_stop != 1)
+    {
+        set_group_title_custom(tox);
+        yieldcpu(1000 * 15); // update song title every 15 seconds
+    }
+    
+    dbg(2, "ToxAudio:Clean audio song title thread exit!\n");
+    
+    return NULL;
+}
 
 void *thread_audio_av(void *data)
 {
@@ -3570,11 +3637,14 @@ void *thread_audio_av(void *data)
     while (toxav_audio_thread_stop != 1)
     {
         // dbg(9, "Audio:CLA:001\n");
-        int16_t *gen_pcm_buffer = calloc(1, pcm_buffer_size);
         // dbg(9, "Audio:CLA:002 buf=%p piep=%p\n", gen_pcm_buffer, pipein);
+        int16_t *gen_pcm_buffer = calloc(1, pcm_buffer_size);
         read_bytes = fread(gen_pcm_buffer, 1, pcm_buffer_size, pipein);
 
-        // dbg(9, "Audio:CLA:003\n");
+        if (read_bytes != pcm_buffer_size)
+        {
+            dbg(9, "Audio:CLA:003 read_bytes=%d pcm_buffer_size=%d\n", (int)read_bytes, (int)pcm_buffer_size);
+        }
         // read(input_audio_ts_pipe_fd, pts_buffer, 1000);
         // num_scan_values = sscanf(pts_buffer, "pos:%ld", &pts);
         // dbg(9, "Audio:PTS=%s\n", pts_buffer);
@@ -3613,6 +3683,7 @@ void *thread_audio_av(void *data)
         {
             while (bw_rb_full(pcm_rb))
             {
+                dbg(9, "Audio:CL:0101 bw_rb_full:WARNING:2:bw_rb_size=%d\n", (int)bw_rb_size(pcm_rb));
                 yieldcpu(1);
             }
 
@@ -4182,54 +4253,50 @@ void send_audio_to_all_audio_groups(Tox *tox)
     uint32_t h;
     int16_t *pcm_buffer = NULL;
 
-    int kk = 0;
-    for (kk=0;kk<2;kk++)
+    if (bw_rb_size(pcm_rb) > 0)
     {
-        if (bw_rb_size(pcm_rb) > 100)
+        bool res1 = bw_rb_read(pcm_rb, &pcm_buffer, &w, &h);
+
+        if (pcm_buffer)
         {
-            bool res1 = bw_rb_read(pcm_rb, &pcm_buffer, &w, &h);
-
-            if (pcm_buffer)
+            size_t num_confs = tox_conference_get_chatlist_size(tox);
+            if (num_confs > 0)
             {
-                size_t num_confs = tox_conference_get_chatlist_size(tox);
-                if (num_confs > 0)
+                size_t memsize = (num_confs * sizeof(uint32_t));
+                uint32_t *conferences_list = calloc(1, memsize);
+                if (conferences_list)
                 {
-                    size_t memsize = (num_confs * sizeof(uint32_t));
-                    uint32_t *conferences_list = calloc(1, memsize);
-                    if (conferences_list)
-                    {
-                        tox_conference_get_chatlist(tox, conferences_list);
+                    tox_conference_get_chatlist(tox, conferences_list);
 
-                        int res;
-                        uint32_t  i;
-                        for(i=0;i<num_confs;i++)
+                    int res;
+                    uint32_t  i;
+                    for(i=0;i<num_confs;i++)
+                    {
+                        // dbg(9, "send_audio_to_all_audio_groups:007:conferences_list[i]=%d\n", (int)conferences_list[i]);
+                        res = toxav_group_send_audio(tox, (uint32_t)conferences_list[i], pcm_buffer, (size_t)gen_sample_count,
+                                                    (uint8_t)gen_channels, (uint32_t)gen_sampling_rate);
+
+                        if (res != 0)
                         {
-                            // dbg(9, "send_audio_to_all_audio_groups:007:conferences_list[i]=%d\n", (int)conferences_list[i]);
+                            usleep(100 * 1); // sleep 0.1 ms
                             res = toxav_group_send_audio(tox, (uint32_t)conferences_list[i], pcm_buffer, (size_t)gen_sample_count,
                                                         (uint8_t)gen_channels, (uint32_t)gen_sampling_rate);
-
-                            if (res != 0)
-                            {
-                                usleep(1000 * 1); // sleep 1 ms
-                                res = toxav_group_send_audio(tox, (uint32_t)conferences_list[i], pcm_buffer, (size_t)gen_sample_count,
-                                                            (uint8_t)gen_channels, (uint32_t)gen_sampling_rate);
-                            }
-                            // dbg(9, "send_audio_to_all_audio_groups:007a:%d,%d,%d\n", (uint32_t)gen_sample_count, (uint32_t)gen_channels, (uint32_t)gen_sampling_rate);
-                            // dbg(9, "send_audio_to_all_audio_groups:008:res=%d\n", res);
-                            // dbg(9, "send_audio_to_all_audio_groups:008:pcm:%d %d %d %d\n",
-                            //    (int)pcm_buffer[0],
-                            //    (int)pcm_buffer[1],
-                            //    (int)pcm_buffer[2],
-                            //    (int)pcm_buffer[3]);
                         }
-
-                        free(conferences_list);
+                        // dbg(9, "send_audio_to_all_audio_groups:007a:%d,%d,%d\n", (uint32_t)gen_sample_count, (uint32_t)gen_channels, (uint32_t)gen_sampling_rate);
+                        // dbg(9, "send_audio_to_all_audio_groups:008:res=%d\n", res);
+                        // dbg(9, "send_audio_to_all_audio_groups:008:pcm:%d %d %d %d\n",
+                        //    (int)pcm_buffer[0],
+                        //    (int)pcm_buffer[1],
+                        //    (int)pcm_buffer[2],
+                        //    (int)pcm_buffer[3]);
                     }
-                }
 
-                free(pcm_buffer);
-                pcm_buffer = NULL;
+                    free(conferences_list);
+                }
             }
+
+            free(pcm_buffer);
+            pcm_buffer = NULL;
         }
     }
 }
@@ -4239,6 +4306,36 @@ void send_audio_to_all_audio_groups(Tox *tox)
 // --------- group ---------
 
 
+void set_group_title_custom(Tox *tox)
+{
+    char output_str[100];
+    CLEAR(output_str);
+    run_cmd_return_output(shell_cmd__get_song_title, output_str, 1);
+
+    if (!shell_cmd__get_song_title)
+    {
+        snprintf(output_str, (100 - 1), "unknown");
+    }
+
+    size_t num_confs = tox_conference_get_chatlist_size(tox);
+    if (num_confs > 0)
+    {
+        size_t memsize = (num_confs * sizeof(uint32_t));
+        uint32_t *conferences_list = calloc(1, memsize);
+        if (conferences_list)
+        {
+            tox_conference_get_chatlist(tox, conferences_list);
+
+            int res;
+            uint32_t  i;
+            for(i=0;i<num_confs;i++)
+            {
+                tox_conference_set_title(tox, (uint32_t)conferences_list[i], (const uint8_t *)output_str, (size_t)(strlen(output_str)), NULL);
+            }
+            free(conferences_list);
+        }
+    }
+}
 
 void randomish_string(char *str, size_t size)
 {
@@ -4544,8 +4641,8 @@ int main(int argc, char *argv[])
     toxav_callback_audio_receive_frame(mytox_av, t_toxav_receive_audio_frame_cb, &mytox_CC);
     // init AV callbacks -------------------------------
     // start toxav thread ------------------------------
-    pthread_t tid[4];   // 0 -> toxav_iterate thread, 1 -> video send thread, 2 -> audio read thread
-    // 3 -> audio send thread
+    pthread_t tid[5];   // 0 -> toxav_iterate thread, 1 -> video send thread, 2 -> audio read thread
+    // 3 -> audio send thread, 4 -> set song title thread
     // start toxav thread ------------------------------
     toxav_iterate_thread_stop = 0;
 
@@ -4555,6 +4652,7 @@ int main(int argc, char *argv[])
     }
     else
     {
+        pthread_setname_np(tid[0], "t_av_iter");
         dbg(2, "AV iterate Thread successfully created\n");
     }
 
@@ -4566,10 +4664,13 @@ int main(int argc, char *argv[])
     }
     else
     {
+        pthread_setname_np(tid[1], "t_av_video");
         dbg(2, "AV video Thread successfully created\n");
     }
 
-    pcm_rb = bw_rb_new(500);
+    int elements_in_buffer = (int)((BUFFER_INPUT_STREAM_MS / gen_audio_length_in_ms) * 100);
+    dbg(2, "bw_rb_new:max elements=%d\n", elements_in_buffer);
+    pcm_rb = bw_rb_new(elements_in_buffer); // about 3 x n seconds audio buffer
     toxav_audio_thread_stop = 0;
 
     if (pthread_create(&(tid[2]), NULL, thread_audio_av, (void *)mytox_av) != 0)
@@ -4578,16 +4679,32 @@ int main(int argc, char *argv[])
     }
     else
     {
+        pthread_setname_np(tid[2], "t_a_read");
         dbg(2, "AV audio Thread successfully created\n");
     }
 
-    if (pthread_create(&(tid[3]), NULL, thread_audio_send_av, (void *)mytox_av) != 0)
+    toxav_audio_send_thread_stop = 0;
+
+    if (pthread_create(&(tid[3]), NULL, thread_audio_send_av, (void *)tox) != 0)
     {
         dbg(0, "AV audio send Thread create failed\n");
     }
     else
     {
+        pthread_setname_np(tid[3], "t_a_send");
         dbg(2, "AV audio send Thread successfully created\n");
+    }
+    
+    toxav_audio_songtitle_thread_stop = 0;
+
+    if (pthread_create(&(tid[4]), NULL, thread_set_song_title, (void *)tox) != 0)
+    {
+        dbg(0, "AV audio song title Thread create failed\n");
+    }
+    else
+    {
+        pthread_setname_np(tid[4], "t_a_title");
+        dbg(2, "AV audio song title Thread successfully created\n");
     }
 
     // start toxav thread ------------------------------
@@ -4625,23 +4742,10 @@ int main(int argc, char *argv[])
     }
     // activate audio groups ----------------------
 
-    uint64_t last_sent_audio = tc_current_time_monotonic();
-    uint64_t tolerance = 0;
-
     while (tox_loop_running)
     {
-        if ((last_sent_audio + (gen_audio_length_in_ms - tolerance)) <= tc_current_time_monotonic())
-        {
-            send_audio_to_all_audio_groups(tox);
-            last_sent_audio = tc_current_time_monotonic();
-        }
         tox_iterate(tox, NULL);
-        if ((last_sent_audio + (gen_audio_length_in_ms - tolerance)) <= tc_current_time_monotonic())
-        {
-            send_audio_to_all_audio_groups(tox);
-            last_sent_audio = tc_current_time_monotonic();
-        }
-        usleep(2 * 1000);
+        usleep(1 * 1000);
 
         if (global_want_restart == 1)
         {
@@ -4657,6 +4761,8 @@ int main(int argc, char *argv[])
     toxav_audio_thread_stop = 1;
     toxav_video_thread_stop = 1;
     toxav_iterate_thread_stop = 1;
+    toxav_audio_songtitle_thread_stop = 1;
+    toxav_audio_send_thread_stop = 1;
     kill_all_file_transfers(tox);
     close_cam();
     toxav_kill(mytox_av);
