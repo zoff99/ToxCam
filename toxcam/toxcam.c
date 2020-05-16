@@ -3502,7 +3502,7 @@ void *thread_audio_send_av(void *data)
 
     uint64_t last_sent_audio = tc_current_time_monotonic();
     uint64_t tolerance = 0;
-    int delta_sleep = 0;
+    int delta_sleep = gen_audio_length_in_ms;
     int start_streaming = 0;
 
     while (toxav_audio_send_thread_stop != 1)
@@ -3515,15 +3515,16 @@ void *thread_audio_send_av(void *data)
             {
                 start_streaming = 1;
             }
+
             if (start_streaming == 1)
             {
                 if (tox)
                 {
                     // dbg(9, "bw_rb_size1:stream=%d delta=%d\n", (int)bw_rb_size(pcm_rb), (int)(tc_current_time_monotonic() - last_sent_audio));
+                    delta_sleep = (int)(tc_current_time_monotonic() - last_sent_audio);
                     last_sent_audio = tc_current_time_monotonic();
                     // dbg(9, "3:delta_sleep=%d last_sent_audio=%lu\n", (int)delta_sleep, last_sent_audio);
                     send_audio_to_all_audio_groups(tox);
-                    delta_sleep = (int)(tc_current_time_monotonic() - last_sent_audio);
                 }
             }
             else
@@ -3533,16 +3534,16 @@ void *thread_audio_send_av(void *data)
         }
 
         int must_sleep = (int)gen_audio_length_in_ms - (int)delta_sleep;
-        if (must_sleep < 0)
+        if (must_sleep < 1)
         {
-            must_sleep = 0;
+            must_sleep = 1;
         }
         else if (must_sleep > (int)gen_audio_length_in_ms + (int)20)
         {
             must_sleep = (int)gen_audio_length_in_ms;
         }
-        // dbg(9, "must_sleep=%d\n", (int)must_sleep);
-        yieldcpu((uint32_t)must_sleep);
+        // dbg(9, "must_sleep=%d delta_sleep=%d\n", (int)must_sleep, (int)delta_sleep);
+        usleep((1000 * must_sleep) - 4); // in "us" (micro seconds)
     }
 
 
@@ -3607,7 +3608,7 @@ void *thread_audio_av(void *data)
     int read_bytes = 0;
     char cmd[1000];
     CLEAR(cmd);
-#if 1
+
 #ifdef _IS_PLATFORM_WIN_
     snprintf(cmd, sizeof(cmd),
              "ffmpeg.exe -y -hide_banner -nostats -i %s -threads %d -acodec pcm_s16le -f s16le -ac %d -ar %d pipe:1 < NUL",
@@ -3617,11 +3618,7 @@ void *thread_audio_av(void *data)
              "ffmpeg -y -hide_banner -nostats -i %s -threads %d -acodec pcm_s16le -f s16le -ac %d -ar %d - </dev/null",
              input_video_file, cpu_cores, gen_channels, gen_sampling_rate);
 #endif
-#else
-    snprintf(cmd, sizeof(cmd),
-             "ffmpeg -y -hide_banner -nostats -i %s -threads %d -af ashowinfo -acodec pcm_s16le -f s16le -ac %d -ar %d - 2> %s",
-             input_video_file, cpu_cores, gen_channels, gen_sampling_rate, input_audio_ts_pipe);
-#endif
+
     // Open an input pipe from ffmpeg
     FILE *pipein = popen(cmd, "r");
     //int input_audio_ts_pipe_fd = open(input_audio_ts_pipe, O_RDONLY | O_NONBLOCK);
@@ -3643,7 +3640,11 @@ void *thread_audio_av(void *data)
 
         if (read_bytes != pcm_buffer_size)
         {
-            dbg(9, "Audio:CLA:003 read_bytes=%d pcm_buffer_size=%d\n", (int)read_bytes, (int)pcm_buffer_size);
+            dbg(9, "Audio:CLA:003*B* read_bytes=%d pcm_buffer_size=%d\n", (int)read_bytes, (int)pcm_buffer_size);
+        }
+        else
+        {
+            // dbg(9, "Audio:CLA:003:a: read_bytes=%d pcm_buffer_size=%d\n", (int)read_bytes, (int)pcm_buffer_size);
         }
         // read(input_audio_ts_pipe_fd, pts_buffer, 1000);
         // num_scan_values = sscanf(pts_buffer, "pos:%ld", &pts);
@@ -3668,6 +3669,13 @@ void *thread_audio_av(void *data)
 
             while (bw_rb_full(pcm_rb))
             {
+                uint32_t dummy1;
+                uint32_t dummy2;
+                int16_t *dummy_buf = NULL;
+                while (bw_rb_read(pcm_rb, &dummy_buf, &dummy1, &dummy2))
+                {
+                    free(dummy_buf);
+                }
                 yieldcpu(1);
             }
 
@@ -3683,6 +3691,13 @@ void *thread_audio_av(void *data)
         {
             while (bw_rb_full(pcm_rb))
             {
+                uint32_t dummy1;
+                uint32_t dummy2;
+                int16_t *dummy_buf = NULL;
+                while (bw_rb_read(pcm_rb, &dummy_buf, &dummy1, &dummy2))
+                {
+                    free(dummy_buf);
+                }
                 dbg(9, "Audio:CL:0101 bw_rb_full:WARNING:2:bw_rb_size=%d\n", (int)bw_rb_size(pcm_rb));
                 yieldcpu(1);
             }
@@ -4253,9 +4268,16 @@ void send_audio_to_all_audio_groups(Tox *tox)
     uint32_t h;
     int16_t *pcm_buffer = NULL;
 
-    if (bw_rb_size(pcm_rb) > 0)
+    // dbg(9, "send_audio_to_all_audio_groups:start\n");
+
+    uint16_t elements_in_bufer = bw_rb_size(pcm_rb);
+    if (elements_in_bufer > 0)
     {
+        // dbg(9, "send_audio_to_all_audio_groups:bw_rb_size=%d\n", elements_in_bufer);
+
         bool res1 = bw_rb_read(pcm_rb, &pcm_buffer, &w, &h);
+
+        // dbg(9, "send_audio_to_all_audio_groups:bw_rb_read:res1=%d buf=%p\n", res1, pcm_buffer);
 
         if (pcm_buffer)
         {
@@ -4272,15 +4294,23 @@ void send_audio_to_all_audio_groups(Tox *tox)
                     uint32_t  i;
                     for(i=0;i<num_confs;i++)
                     {
-                        // dbg(9, "send_audio_to_all_audio_groups:007:conferences_list[i]=%d\n", (int)conferences_list[i]);
                         res = toxav_group_send_audio(tox, (uint32_t)conferences_list[i], pcm_buffer, (size_t)gen_sample_count,
                                                     (uint8_t)gen_channels, (uint32_t)gen_sampling_rate);
+
+                        // dbg(9, "send_audio_to_all_audio_groups:007:conferences_list[i]=%d:res=%d\n", (int)conferences_list[i], res);
 
                         if (res != 0)
                         {
                             usleep(100 * 1); // sleep 0.1 ms
                             res = toxav_group_send_audio(tox, (uint32_t)conferences_list[i], pcm_buffer, (size_t)gen_sample_count,
                                                         (uint8_t)gen_channels, (uint32_t)gen_sampling_rate);
+
+                            // dbg(9, "send_audio_to_all_audio_groups:008:conferences_list[i]=%d:res=%d\n", (int)conferences_list[i], res);
+                        }
+
+                        if (res != 0)
+                        {
+                            // dbg(9, "send_audio_to_all_audio_groups:009:**GLITCH**:conferences_list[i]=%d:res=%d\n", (int)conferences_list[i], res);
                         }
                         // dbg(9, "send_audio_to_all_audio_groups:007a:%d,%d,%d\n", (uint32_t)gen_sample_count, (uint32_t)gen_channels, (uint32_t)gen_sampling_rate);
                         // dbg(9, "send_audio_to_all_audio_groups:008:res=%d\n", res);
@@ -4545,8 +4575,8 @@ int main(int argc, char *argv[])
         }
     }
 
-    // cpu_cores = get_nprocs();
-    cpu_cores = 2;
+    // cpu_cores = 1;
+    cpu_cores = get_nprocs();
     dbg(9, "detected %d processors\n", cpu_cores);
     Tox *tox = create_tox();
     global_start_time = time(NULL);
@@ -4668,7 +4698,7 @@ int main(int argc, char *argv[])
         dbg(2, "AV video Thread successfully created\n");
     }
 
-    int elements_in_buffer = (int)((BUFFER_INPUT_STREAM_MS / gen_audio_length_in_ms) * 100);
+    int elements_in_buffer = (int)((BUFFER_INPUT_STREAM_MS / gen_audio_length_in_ms) * 4);
     dbg(2, "bw_rb_new:max elements=%d\n", elements_in_buffer);
     pcm_rb = bw_rb_new(elements_in_buffer); // about 3 x n seconds audio buffer
     toxav_audio_thread_stop = 0;
